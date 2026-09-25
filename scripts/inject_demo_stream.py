@@ -80,6 +80,8 @@ STAGE_SCRIPTS: Dict[str, List[Dict[str, str]]] = {
         },
     ],
 }
+STAGE_SCRIPTS["demo-stage-a"] = STAGE_SCRIPTS["stage-a"]
+STAGE_SCRIPTS["demo-stage-b"] = STAGE_SCRIPTS["stage-b"]
 
 
 def send_inject_request(host: str, stage: str, msg_type: str, text: str, token: Optional[str] = None) -> Optional[dict]:
@@ -114,7 +116,12 @@ def send_inject_request(host: str, stage: str, msg_type: str, text: str, token: 
 def main():
     parser = argparse.ArgumentParser(description="Inject live speech transcripts into Nerdearla Live sessions.")
     parser.add_argument("--host", default="http://localhost:3000", help="Base URL of Nerdearla Live (default: http://localhost:3000)")
-    parser.add_argument("--stage", default="both", choices=["both", "all", "stage-a", "stage-b", "stage-c", "stage-d"], help="Target stage (default: both)")
+    parser.add_argument(
+        "--stage",
+        default="demo-both",
+        choices=["demo-both", "demo-stage-a", "demo-stage-b", "stage-a", "stage-b", "both", "all"],
+        help="Target stage (default: demo-both, strictly isolated from production)",
+    )
     parser.add_argument("--interval", type=float, default=4.0, help="Seconds between statements (default: 4.0)")
     parser.add_argument("--interim", action="store_true", default=True, help="Send interim preview before finalized phrase (default: True)")
     parser.add_argument("--loops", type=int, default=0, help="Number of loops to run (0 = continuous infinite stream)")
@@ -123,19 +130,39 @@ def main():
     parser.add_argument("--lang", default="en", help="Source language for custom text (default: en)")
     args = parser.parse_args()
 
-    stages = ["stage-a", "stage-b"] if args.stage == "both" else (list(STAGE_SCRIPTS.keys()) if args.stage == "all" else [args.stage])
+    if args.stage == "demo-both":
+        stages = ["demo-stage-a", "demo-stage-b"]
+        is_isolated_sandbox = True
+    elif args.stage in ("demo-stage-a", "demo-stage-b"):
+        stages = [args.stage]
+        is_isolated_sandbox = True
+    elif args.stage == "both":
+        stages = ["stage-a", "stage-b"]
+        is_isolated_sandbox = False
+    elif args.stage == "all":
+        stages = ["stage-a", "stage-b", "stage-c", "stage-d"]
+        is_isolated_sandbox = False
+    else:
+        stages = [args.stage]
+        is_isolated_sandbox = args.stage.startswith("demo-")
 
-    print("=" * 65)
-    print("  🎙️ Nerdearla Live — Multi-Stage Real-Time Data Injector")
+    print("=" * 68)
+    print("  🎙️ Nerdearla Live — Real-Time Data Injector")
     print(f"  Target Host: {args.host}")
     print(f"  Stages:      {', '.join(stages)}")
+    if is_isolated_sandbox:
+        print("  🛡️  ISOLATION: Streaming to Isolated Sandbox (demo-stage-a, demo-stage-b).")
+        print("     Real conference stages (stage-a, stage-b) are 100% PROTECTED.")
+    else:
+        print("  ⚠️  ATTENTION: Streaming to PRODUCTION STAGE(S)!")
+        print("     Real attendees will see these subtitles.")
     if args.text:
         print(f"  Mode:        Custom One-Shot Injection")
         print(f"  Text:        \"{args.text}\" (lang: {args.lang})")
     else:
         print(f"  Mode:        Automated Multi-Stage Stream ({'Infinite' if args.loops == 0 else f'{args.loops} loops'})")
         print(f"  Interval:    {args.interval}s")
-    print("=" * 65)
+    print("=" * 68)
 
     if args.text:
         for stage in stages:

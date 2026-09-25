@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Nerdearla Live Demo — 2 Simultaneous Live Stages{% endblock %}
+{% block title %}Nerdearla Live Demo — 2 Simultaneous Live Stages (Isolated Sandbox){% endblock %}
 
 {% block head_extra %}
 <style>
@@ -15,12 +15,12 @@
     gap: 8px;
     padding: 6px 14px;
     border-radius: 999px;
-    background: rgba(33, 159, 157, 0.15);
-    color: #219f9d;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
     font-size: 0.85rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    border: 1px solid rgba(33, 159, 157, 0.3);
+    border: 1px solid rgba(139, 92, 246, 0.3);
   }
   .pulse-dot {
     display: inline-block;
@@ -35,6 +35,24 @@
     0% { transform: scale(0.95); opacity: 0.8; }
     50% { transform: scale(1.2); opacity: 1; }
     100% { transform: scale(0.95); opacity: 0.8; }
+  }
+
+  /* Isolation Notice Banner */
+  .isolation-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  .isolation-shield-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
   }
 
   /* Injection Console Card */
@@ -104,10 +122,6 @@
     background: #8b5cf6;
     color: #ffffff;
     box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
-  }
-  .pill-btn.active-mode {
-    background: var(--primary);
-    color: #ffffff;
   }
 
   /* Preset Chips */
@@ -228,14 +242,25 @@
 <div class="demo-hero">
   <div class="demo-badge">
     <span class="pulse-dot"></span>
-    Nerdearla Vibeathon 2026 Live Multi-Stage Demonstration
+    🧪 Sandbox Aislado — Demostración Multi-Sala para Jurado & Testing
   </div>
   <h1 style="font-size: 2.2rem; font-weight: 800; margin: 0.25rem 0 0.5rem; background: linear-gradient(135deg, var(--text) 40%, #fbb212 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
     Simultaneous 2-Stage Live Captioning & Translation
   </h1>
   <p style="color: var(--muted); max-width: 760px; margin: 0 auto; font-size: 0.95rem;">
-    Demostración en vivo de dos salas de conferencias independientes corriendo en paralelo con aislamiento total de WebSockets, traducción automática con IA (Gemini Live / Google Translate fallback), glosario técnico y entrega sub-segundo.
+    Demostración en vivo de dos salas de prueba completamente aisladas del evento principal. Prueba la traducción simultánea con IA (Gemini Live / Google Translate fallback) y la entrega sub-segundo sin afectar las conferencias reales.
   </p>
+</div>
+
+<!-- ISOLATION NOTICE -->
+<div class="isolation-banner">
+  <span class="isolation-shield-icon">🛡️</span>
+  <div>
+    <strong>Aislamiento de Sesiones Activo:</strong> Esta consola inyecta datos <em>únicamente</em> en las salas de prueba 
+    <code style="background:var(--panel-2); padding:2px 6px; border-radius:4px; font-weight:700;">demo-stage-a</code> y 
+    <code style="background:var(--panel-2); padding:2px 6px; border-radius:4px; font-weight:700;">demo-stage-b</code>. 
+    Las salas oficiales de producción (<code style="background:var(--panel-2); padding:2px 6px; border-radius:4px;">stage-a</code>, <code style="background:var(--panel-2); padding:2px 6px; border-radius:4px;">stage-b</code>, <code style="background:var(--panel-2); padding:2px 6px; border-radius:4px;">stage-c</code>, <code style="background:var(--panel-2); padding:2px 6px; border-radius:4px;">stage-d</code>) permanecen <strong>100% limpias y protegidas</strong>.
+  </div>
 </div>
 
 <!-- LIVE DATA INJECTION CONSOLE -->
@@ -243,28 +268,28 @@
   <div class="injector-header">
     <div class="injector-title">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbb212" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Panel de Inyección de Datos en Vivo
+      Panel de Inyección en Salas de Prueba
       <span style="font-size: 0.75rem; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.3);">
-        HTTP + WS Live Broadcast Active
+        Sandbox Mode Active
       </span>
     </div>
 
-    <!-- Quick action links to other views -->
+    <!-- Quick action links to demo stage views -->
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <a href="/session/stage-a" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #fbb212; font-size:0.75rem; padding: 4px 8px;">
-        📱 Móvil Stage A ↗
+      <a href="/session/demo-stage-a" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #fbb212; font-size:0.75rem; padding: 4px 8px;">
+        📱 Móvil Demo A ↗
       </a>
-      <a href="/session/stage-b" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #219f9d; font-size:0.75rem; padding: 4px 8px;">
-        📱 Móvil Stage B ↗
+      <a href="/session/demo-stage-b" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #219f9d; font-size:0.75rem; padding: 4px 8px;">
+        📱 Móvil Demo B ↗
       </a>
-      <a href="/stage/stage-a/display" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #fbb212; font-size:0.75rem; padding: 4px 8px;">
-        📺 TV Stage A ↗
+      <a href="/stage/demo-stage-a/display" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #fbb212; font-size:0.75rem; padding: 4px 8px;">
+        📺 TV Demo A ↗
       </a>
-      <a href="/stage/stage-b/display" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #219f9d; font-size:0.75rem; padding: 4px 8px;">
-        📺 TV Stage B ↗
+      <a href="/stage/demo-stage-b/display" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #219f9d; font-size:0.75rem; padding: 4px 8px;">
+        📺 TV Demo B ↗
       </a>
       <button class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); font-size:0.75rem; padding: 4px 8px;" onclick="resetDemo()">
-        🗑️ Limpiar
+        🗑️ Limpiar Feed
       </button>
     </div>
   </div>
@@ -272,16 +297,16 @@
   <!-- Stage & Simulation Mode Selectors -->
   <div class="injector-controls-row">
     <div>
-      <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-right: 8px;">SALA DESTINO:</span>
+      <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-right: 8px;">SALA DESTINO (SANDBOX):</span>
       <div class="pill-group" id="targetStageGroup">
-        <button type="button" class="pill-btn active-stage-a" onclick="setTargetStage('stage-a')">STAGE A (AI)</button>
-        <button type="button" class="pill-btn" onclick="setTargetStage('stage-b')">STAGE B (Cloud)</button>
-        <button type="button" class="pill-btn" onclick="setTargetStage('both')">AMBAS SALAS (Simultáneo)</button>
+        <button type="button" class="pill-btn active-stage-a" onclick="setTargetStage('demo-stage-a')">🧪 DEMO STAGE A (AI)</button>
+        <button type="button" class="pill-btn" onclick="setTargetStage('demo-stage-b')">🧪 DEMO STAGE B (Cloud)</button>
+        <button type="button" class="pill-btn" onclick="setTargetStage('demo-both')">🌐 AMBAS SALAS DE PRUEBA</button>
       </div>
     </div>
 
     <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-      <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">SIMULACIÓN AUTOMÁTICA:</span>
+      <span style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">SIMULACIÓN CONTINUA:</span>
       <button id="startDemoBtn" class="btn" style="background: #fbb212; color: #000000; font-weight: 700; font-size: 0.82rem; padding: 6px 14px;" onclick="toggleDemoSimulation()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Iniciar Simulación Continua
@@ -297,11 +322,11 @@
   <!-- Custom Text Injection Bar -->
   <div style="display: flex; gap: 8px; margin-top: 0.5rem;">
     <input type="text" id="manualTextInput" class="form-control" style="flex: 1; font-size: 0.9rem; padding: 8px 12px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" 
-      placeholder="Escribe una frase en inglés o español... ej: Welcome to Nerdearla 2026, running local models with WebGPU"
+      placeholder="Escribe una frase de prueba en inglés o español... ej: Welcome to Nerdearla 2026, running local models with WebGPU"
       onkeydown="if(event.key==='Enter') injectCustomText()" />
     <button type="button" class="btn btn-primary" style="font-weight: 700; padding: 8px 18px; display: inline-flex; align-items: center; gap: 6px;" onclick="injectCustomText()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Inyectar Subtítulo
+      Inyectar a Sandbox
     </button>
   </div>
 
@@ -321,14 +346,14 @@
   <div id="injectionStatusToast" class="status-toast"></div>
 </div>
 
-<!-- 2-STAGE SPLIT VIEW -->
+<!-- 2-STAGE SPLIT VIEW (ISOLATED DEMO STAGES) -->
 <div class="demo-split-grid">
-  <!-- Stage A Panel -->
+  <!-- Demo Stage A Panel -->
   <div class="stage-panel" id="panelStageA">
     <div class="stage-panel-header">
       <div>
-        <span style="font-weight: 800; color: #000000; background: #fbb212; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">STAGE A</span>
-        <strong style="margin-left: 8px;">AI & Open Source</strong>
+        <span style="font-weight: 800; color: #000000; background: #fbb212; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">DEMO STAGE A</span>
+        <strong style="margin-left: 8px;">AI & Open Source (Sandbox)</strong>
       </div>
       <div style="font-size: 0.8rem; color: #10b981; font-weight: 600; display:flex; align-items:center; gap:6px;">
         <span class="pulse-dot"></span>
@@ -337,18 +362,18 @@
     </div>
     <div class="feed-box" id="feedA">
       <div class="feed-card" style="border-left-color: var(--border);">
-        <div class="feed-translation">Esperando inicio de subtítulos en Stage A...</div>
-        <div class="feed-original">Waiting for Stage A speech...</div>
+        <div class="feed-translation">Esperando subtítulos en Demo Stage A (Sandbox)...</div>
+        <div class="feed-original">Waiting for Demo Stage A speech...</div>
       </div>
     </div>
   </div>
 
-  <!-- Stage B Panel -->
+  <!-- Demo Stage B Panel -->
   <div class="stage-panel" id="panelStageB">
     <div class="stage-panel-header">
       <div>
-        <span style="font-weight: 800; color: #ffffff; background: #219f9d; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">STAGE B</span>
-        <strong style="margin-left: 8px;">Cloud Infrastructure & DevOps</strong>
+        <span style="font-weight: 800; color: #ffffff; background: #219f9d; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">DEMO STAGE B</span>
+        <strong style="margin-left: 8px;">Cloud Infrastructure & DevOps (Sandbox)</strong>
       </div>
       <div style="font-size: 0.8rem; color: #10b981; font-weight: 600; display:flex; align-items:center; gap:6px;">
         <span class="pulse-dot"></span>
@@ -357,8 +382,8 @@
     </div>
     <div class="feed-box" id="feedB">
       <div class="feed-card stage-b-card" style="border-left-color: var(--border);">
-        <div class="feed-translation">Esperando inicio de subtítulos en Stage B...</div>
-        <div class="feed-original">Waiting for Stage B speech...</div>
+        <div class="feed-translation">Esperando subtítulos en Demo Stage B (Sandbox)...</div>
+        <div class="feed-original">Waiting for Demo Stage B speech...</div>
       </div>
     </div>
   </div>
@@ -382,7 +407,7 @@
     { interim: "Thank you for joining our DevOps workshop", final: "Thank you for joining our DevOps workshop today at Nerdearla!" },
   ];
 
-  let selectedStage = 'stage-a';
+  let selectedStage = 'demo-stage-a';
   let wsA = null;
   let wsB = null;
   let isSimulating = false;
@@ -398,9 +423,8 @@
     btns.forEach(b => {
       b.classList.remove('active-stage-a', 'active-stage-b', 'active-stage-both');
     });
-    const targetIdx = stage === 'stage-a' ? 0 : (stage === 'stage-b' ? 1 : 2);
-    if (stage === 'stage-a') btns[0].classList.add('active-stage-a');
-    else if (stage === 'stage-b') btns[1].classList.add('active-stage-b');
+    if (stage === 'demo-stage-a') btns[0].classList.add('active-stage-a');
+    else if (stage === 'demo-stage-b') btns[1].classList.add('active-stage-b');
     else btns[2].classList.add('active-stage-both');
   }
 
@@ -411,9 +435,9 @@
   function connectStageSockets() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
-    // Connect to Stage A Viewer
+    // Connect to Isolated Demo Stage A Viewer
     if (wsA) { wsA.close(); }
-    wsA = new WebSocket(`${protocol}//${window.location.host}/ws/session/stage-a/viewer`);
+    wsA = new WebSocket(`${protocol}//${window.location.host}/ws/session/demo-stage-a/viewer`);
     wsA.onopen = () => {
       const el = document.getElementById('connA');
       if (el) el.textContent = 'ONLINE';
@@ -439,9 +463,9 @@
       } catch(err){}
     };
 
-    // Connect to Stage B Viewer
+    // Connect to Isolated Demo Stage B Viewer
     if (wsB) { wsB.close(); }
-    wsB = new WebSocket(`${protocol}//${window.location.host}/ws/session/stage-b/viewer`);
+    wsB = new WebSocket(`${protocol}//${window.location.host}/ws/session/demo-stage-b/viewer`);
     wsB.onopen = () => {
       const el = document.getElementById('connB');
       if (el) el.textContent = 'ONLINE';
@@ -558,8 +582,8 @@
     const text = input.value.trim();
     if (!text) return;
 
-    showStatusToast(`⏳ Inyectando: "${text.substring(0, 30)}..."`, '#fbb212');
-    const stages = selectedStage === 'both' ? ['stage-a', 'stage-b'] : [selectedStage];
+    showStatusToast(`⏳ Inyectando a Sandbox: "${text.substring(0, 30)}..."`, '#fbb212');
+    const stages = selectedStage === 'demo-both' ? ['demo-stage-a', 'demo-stage-b'] : [selectedStage];
 
     for (const stg of stages) {
       // Send interim first for realism if multi-word
@@ -572,7 +596,7 @@
       const res = await sendProducerText(stg, 'final', text);
       if (res && res.status === 'ok') {
         const viewers = res.delivered_viewers || 0;
-        showStatusToast(`✅ Inyectado en ${stg.toUpperCase()} (${viewers} espectadores conectados)`, '#10b981');
+        showStatusToast(`✅ Inyectado en Sandbox ${stg.toUpperCase()} (${viewers} espectadores)`, '#10b981');
       }
     }
     input.value = '';
@@ -606,7 +630,7 @@
       btn.style.background = '#fbb212';
       btn.style.color = '#000000';
       btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Reanudar Simulación Continua';
-      showStatusToast('⏸ Simulación pausada.', '#fbb212');
+      showStatusToast('⏸ Simulación en sandbox pausada.', '#fbb212');
       return;
     }
 
@@ -614,17 +638,17 @@
     btn.style.background = '#ef4444';
     btn.style.color = '#ffffff';
     btn.innerHTML = '⏸ Pausar Simulación';
-    showStatusToast('🚀 Simulación continua iniciada en Stage A y Stage B', '#10b981');
+    showStatusToast('🚀 Simulación continua iniciada en Sandbox (demo-stage-a y demo-stage-b)', '#10b981');
 
     function runStageAStep() {
       if (!isSimulating) return;
       const item = STAGE_A_SCRIPT[stepA % STAGE_A_SCRIPT.length];
       stepA++;
 
-      sendProducerText('stage-a', 'interim', item.interim);
+      sendProducerText('demo-stage-a', 'interim', item.interim);
       setTimeout(() => {
         if (!isSimulating) return;
-        sendProducerText('stage-a', 'final', item.final);
+        sendProducerText('demo-stage-a', 'final', item.final);
       }, 1000);
 
       simTimerA = setTimeout(runStageAStep, simSpeedMs);
@@ -635,10 +659,10 @@
       const item = STAGE_B_SCRIPT[stepB % STAGE_B_SCRIPT.length];
       stepB++;
 
-      sendProducerText('stage-b', 'interim', item.interim);
+      sendProducerText('demo-stage-b', 'interim', item.interim);
       setTimeout(() => {
         if (!isSimulating) return;
-        sendProducerText('stage-b', 'final', item.final);
+        sendProducerText('demo-stage-b', 'final', item.final);
       }, 1200);
 
       simTimerB = setTimeout(runStageBStep, simSpeedMs + 600);
@@ -649,11 +673,11 @@
   }
 
   function resetDemo() {
-    document.getElementById('feedA').innerHTML = '<div class="feed-card" style="border-left-color: var(--border);"><div class="feed-translation">Esperando inicio de subtítulos en Stage A...</div><div class="feed-original">Waiting for Stage A speech...</div></div>';
-    document.getElementById('feedB').innerHTML = '<div class="feed-card stage-b-card" style="border-left-color: var(--border);"><div class="feed-translation">Esperando inicio de subtítulos en Stage B...</div><div class="feed-original">Waiting for Stage B speech...</div></div>';
+    document.getElementById('feedA').innerHTML = '<div class="feed-card" style="border-left-color: var(--border);"><div class="feed-translation">Esperando subtítulos en Demo Stage A (Sandbox)...</div><div class="feed-original">Waiting for Demo Stage A speech...</div></div>';
+    document.getElementById('feedB').innerHTML = '<div class="feed-card stage-b-card" style="border-left-color: var(--border);"><div class="feed-translation">Esperando subtítulos en Demo Stage B (Sandbox)...</div><div class="feed-original">Waiting for Demo Stage B speech...</div></div>';
     stepA = 0;
     stepB = 0;
-    showStatusToast('🗑️ Feeds reiniciados localmente.', 'var(--muted)');
+    showStatusToast('🗑️ Feeds de prueba reiniciados.', 'var(--muted)');
   }
 
   // Initialize WebSockets
