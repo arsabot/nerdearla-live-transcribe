@@ -827,6 +827,7 @@ async def api_inject_transcript(request: Request, session_id: str):
         targets=target_langs,
         glossary=session.glossary,
     )
+    translations = {k: normalize_brand_terms(v) for k, v in translations.items()}
     trans_ms = (time.perf_counter() - start_t) * 1000
 
     metrics = LatencyMetrics(
