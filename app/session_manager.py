@@ -72,6 +72,7 @@ class Session:
     created_at: float = field(default_factory=time.time)
     history: List[TranscriptEvent] = field(default_factory=list)
     last_metrics: Optional[LatencyMetrics] = None
+    is_demo: bool = False
 
     # Active viewer websockets for this session
     viewers: Set[WebSocket] = field(default_factory=set, repr=False)
@@ -94,6 +95,7 @@ class Session:
             "created_at": self.created_at,
             "glossary": self.glossary,
             "last_metrics": self.last_metrics.to_dict() if self.last_metrics else None,
+            "is_demo": self.is_demo,
         }
         if include_history_count:
             data["events_count"] = len(self.history)
@@ -114,6 +116,7 @@ class Session:
             "description": self.description,
             "glossary": self.glossary,
             "created_at": self.created_at,
+            "is_demo": self.is_demo,
             "history": [ev.to_dict() for ev in self.history[-500:]],
         }
 
@@ -146,6 +149,7 @@ class Session:
             glossary=data.get("glossary", {}),
             created_at=data.get("created_at", time.time()),
             history=history,
+            is_demo=bool(data.get("is_demo", False) or data.get("id", "").startswith("demo-")),
         )
 
 
@@ -252,11 +256,56 @@ class SessionManager:
                     "vulnerability": "vulnerabilidad",
                     "nerdearla": "Nerdearla",
                 },
+                is_demo=False,
+            ),
+            # Dedicated Isolated Sandbox Test Stages for live demos and synthetic injections
+            Session(
+                id="demo-stage-a",
+                name="🧪 Demo Sandbox A — AI Lab (Prueba)",
+                speaker="Simulated Speaker (Linus & AI)",
+                source_language="en",
+                target_languages=["es", "pt"],
+                status="live",
+                engine="webspeech",
+                translation_provider="gemini",
+                description="Sala aislada de prueba para testing y demostración en vivo sin afectar las salas reales de la conferencia.",
+                glossary={
+                    "Kubernetes": "Kubernetes",
+                    "container": "contenedor",
+                    "pull request": "pull request",
+                    "deployment": "despliegue",
+                    "open source": "código abierto",
+                    "real-time": "tiempo real",
+                    "nerdearla": "Nerdearla",
+                },
+                is_demo=True,
+            ),
+            Session(
+                id="demo-stage-b",
+                name="🧪 Demo Sandbox B — Cloud Lab (Prueba)",
+                speaker="Simulated Speaker (Kelsey & Cloud)",
+                source_language="en",
+                target_languages=["es", "pt"],
+                status="live",
+                engine="webspeech",
+                translation_provider="gemini",
+                description="Sala aislada de prueba para testing y demostración de microservicios sin afectar las salas reales de la conferencia.",
+                glossary={
+                    "Kubernetes": "Kubernetes",
+                    "cluster": "clúster",
+                    "load balancer": "balanceador de carga",
+                    "pipeline": "pipeline",
+                    "observability": "observabilidad",
+                    "nerdearla": "Nerdearla",
+                },
+                is_demo=True,
             ),
         ]
         for stage in default_stages:
             if stage.id not in self._sessions:
                 self._sessions[stage.id] = stage
+            else:
+                self._sessions[stage.id].is_demo = stage.is_demo
 
     def _load_from_storage(self) -> None:
         """Load sessions and histories from JSON file on disk."""

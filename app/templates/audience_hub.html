@@ -256,7 +256,7 @@
 </div>
 
 <div class="stages-grid" id="stagesContainer">
-  {% for session in sessions %}
+  {% for session in sessions if not session.is_demo %}
   <div class="stage-card" id="card-{{ session.id }}">
     <div>
       <div class="stage-header">
@@ -298,6 +298,61 @@
   </div>
   {% endfor %}
 </div>
+
+{% set demo_stages = sessions | selectattr('is_demo') | list %}
+{% if demo_stages %}
+<div style="margin-top: 2.5rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 2rem; flex-wrap: wrap; gap: 10px;">
+  <div>
+    <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+      🧪 Salas de Prueba y Simulación (Sandbox)
+    </h2>
+    <p style="color: var(--muted); font-size: 0.85rem; margin: 4px 0 0;">
+      Salas aisladas reservadas para testing e inyección de datos de prueba sin interferir en las salas reales de la conferencia.
+    </p>
+  </div>
+  <a href="/demo" class="btn" style="background: rgba(33, 159, 157, 0.15); color: #219f9d; border: 1px solid rgba(33, 159, 157, 0.35); font-weight: 700; font-size: 0.82rem; padding: 6px 14px;">
+    Abrir Consola Demo ↗
+  </a>
+</div>
+
+<div class="stages-grid">
+  {% for session in demo_stages %}
+  <div class="stage-card" id="card-{{ session.id }}" style="border-style: dashed; border-color: rgba(33, 159, 157, 0.4);">
+    <div>
+      <div class="stage-header">
+        <span class="stage-tag" style="background: rgba(33, 159, 157, 0.2); color: #219f9d; border-color: rgba(33, 159, 157, 0.4);">PRUEBA / SANDBOX</span>
+        <span class="status-pill status-live" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.35);"><span class="pulse-dot"></span> TEST STREAM</span>
+      </div>
+      <h3 class="stage-title">{{ session.name }}</h3>
+      <div class="stage-speaker">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        {{ session.speaker }}
+      </div>
+      <p class="stage-desc">{{ session.description }}</p>
+    </div>
+    <div>
+      <div class="stage-meta">
+        <span>Audio: <strong>{{ session.source_language | upper }}</strong></span>
+        <span>Subtítulos: <strong>{{ session.target_languages | join(', ') | upper }}</strong></span>
+        <span>👥 <span id="viewers-{{ session.id }}">{{ session.viewers_count }}</span> audiencia</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 8px;">
+        <a href="/session/{{ session.id }}" class="btn-watch" style="background: #219f9d; color: #fff; border-color: #0d7a78;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          Ver Subtítulos Test
+        </a>
+        <a href="/display/{{ session.id }}" target="_blank" class="btn" style="background: rgba(251, 178, 18, 0.15); color: #fbb212; border: 1px solid rgba(251, 178, 18, 0.4); padding: 8px 12px; border-radius: var(--radius-sm); font-weight: 700; text-decoration: none;">
+          📺 TV Test
+        </a>
+        <button class="btn" style="background: rgba(33, 159, 157, 0.15); color: #219f9d; border: 1px solid rgba(33, 159, 157, 0.35); padding: 8px 12px; border-radius: var(--radius-sm); font-weight: 600;" onclick="openHubQr('{{ session.id }}')">
+          📱 QR
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <!-- Modal: Hub Stage QR Code -->
 <div class="modal-overlay" id="hubQrModal" style="display: none;" onclick="closeHubQr(event)">

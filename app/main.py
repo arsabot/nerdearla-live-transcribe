@@ -804,11 +804,12 @@ async def api_clear_all_sessions_history(request: Request):
 
 @app.post("/api/session/{session_id}/inject")
 async def api_inject_transcript(request: Request, session_id: str):
-    """Inject a transcript event into a session (Staff Only)."""
-    _require_staff_http_auth(request)
+    """Inject a transcript event into a session (Staff Only for production; Sandbox open for demo stages)."""
     session = await session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="session_not_found")
+    if not session.is_demo:
+        _require_staff_http_auth(request)
 
     body = await request.json()
     text = body.get("text", "").strip()
