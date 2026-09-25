@@ -514,7 +514,10 @@ class GeminiLiveProvider(TranslationProvider):
         fallback: Optional[TranslationProvider] = None,
     ) -> None:
         self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
-        self.model = (model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.5-live-translate-preview")).strip()
+        raw_model = (model or os.getenv("GEMINI_MODEL") or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.6-flash")).strip()
+        if "live-translate" in raw_model.lower():
+            raw_model = (os.getenv("GEMINI_MODEL") or "gemini-3.6-flash").strip()
+        self.model = raw_model or "gemini-3.6-flash"
         self.fallback = fallback or GoogleTranslationProvider()
         self.circuit_breaker = global_gemini_live_circuit
         self._last_active_provider = "gemini_live"
@@ -581,15 +584,22 @@ class GeminiLiveProvider(TranslationProvider):
             f"Text: {text}"
         )
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        model_name = self.model
+        if "live-translate" in model_name.lower():
+            model_name = (os.getenv("GEMINI_MODEL") or "gemini-3.6-flash").strip()
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 600},
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 600,
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
         }
 
         try:
             t0 = time.perf_counter()
-            async with httpx.AsyncClient(timeout=3.5) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.post(url, json=payload)
 
             if resp.status_code == 200:
@@ -611,7 +621,10 @@ class GeminiLiveProvider(TranslationProvider):
                 logging.error("[GeminiLive] Authentication error")
                 self.circuit_breaker.trip(ErrorType.AUTH_ERROR, f"HTTP {resp.status_code}")
             elif resp.status_code == 429:
-                self.circuit_breaker.trip(ErrorType.RATE_LIMIT, "HTTP 429 Rate Limit")
+                self.circuit_breaker.trip(ErrorType.RATE_LIMIT, "HTTP 429 Rate Limit", cooldown=5.0)
+            elif resp.status_code == 503:
+                logging.info("[GeminiLive] 503 High Demand spike, using quick Google Translate fallback")
+                self.circuit_breaker.trip(ErrorType.SERVER_ERROR, "HTTP 503 High Demand", cooldown=2.0)
             else:
                 self.circuit_breaker.trip(ErrorType.SERVER_ERROR, f"HTTP {resp.status_code}")
 
@@ -661,18 +674,22 @@ class GeminiLiveProvider(TranslationProvider):
             f"Text: {text}"
         )
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        model_name = self.model
+        if "live-translate" in model_name.lower():
+            model_name = (os.getenv("GEMINI_MODEL") or "gemini-3.6-flash").strip()
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "responseMimeType": "application/json",
                 "temperature": 0.1,
                 "maxOutputTokens": 800,
+                "thinkingConfig": {"thinkingBudget": 0},
             },
         }
 
         try:
-            async with httpx.AsyncClient(timeout=3.8) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.post(url, json=payload)
 
             if resp.status_code == 200:
@@ -698,6 +715,11 @@ class GeminiLiveProvider(TranslationProvider):
             elif resp.status_code in (401, 403):
                 logging.error("[GeminiLive] Authentication error")
                 self.circuit_breaker.trip(ErrorType.AUTH_ERROR, f"HTTP {resp.status_code}")
+            elif resp.status_code == 429:
+                self.circuit_breaker.trip(ErrorType.RATE_LIMIT, "HTTP 429 Rate Limit", cooldown=5.0)
+            elif resp.status_code == 503:
+                logging.info("[GeminiLive] 503 High Demand spike, using quick Google Translate fallback")
+                self.circuit_breaker.trip(ErrorType.SERVER_ERROR, "HTTP 503 High Demand", cooldown=2.0)
             else:
                 self.circuit_breaker.trip(ErrorType.NETWORK_ERROR, f"HTTP {resp.status_code}")
 
