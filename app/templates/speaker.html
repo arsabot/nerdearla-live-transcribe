@@ -1,0 +1,769 @@
+{% extends "base.html" %}
+
+{% block title %}Speaker Terminal — {{ session.name }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .speaker-container {
+    max-width: 800px;
+    margin: 1.5rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .speaker-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .speaker-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+  }
+  .stage-badge-xl {
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--primary);
+  }
+  .speaker-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 6px 0 2px;
+  }
+  .speaker-meta {
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .status-idle {
+    background: rgba(100, 116, 139, 0.12);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .status-live {
+    background: rgba(230, 62, 74, 0.12);
+    color: #dc2626;
+    border: 1px solid rgba(230, 62, 74, 0.4);
+    animation: pulseBorder 1.5s infinite;
+  }
+  html[data-theme="dark"] .status-live {
+    color: #e63e4a;
+  }
+  @keyframes pulseBorder {
+    0% { box-shadow: 0 0 0 0 rgba(230, 62, 74, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(230, 62, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(230, 62, 74, 0); }
+  }
+  .big-mic-btn {
+    width: 100%;
+    padding: 1.4rem;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 1.3rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .big-mic-btn.idle {
+    background: #219f9d;
+    color: white;
+    border: 2px solid #0f766e;
+    box-shadow: 0 4px 16px rgba(33, 159, 157, 0.35);
+  }
+  .big-mic-btn.idle:hover {
+    background: #1a8381;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(33, 159, 157, 0.45);
+  }
+  .big-mic-btn.broadcasting {
+    background: #e63e4a;
+    color: white;
+    border: 2px solid #b91c1c;
+    box-shadow: 0 4px 20px rgba(230, 62, 74, 0.5);
+    animation: broadcastGlow 1.8s infinite alternate;
+  }
+  @keyframes broadcastGlow {
+    from { box-shadow: 0 0 15px rgba(230, 62, 74, 0.4); }
+    to { box-shadow: 0 0 30px rgba(230, 62, 74, 0.8); }
+  }
+  .monitor-box {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    min-height: 140px;
+    max-height: 240px;
+    overflow-y: auto;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .interim-preview {
+    color: #b45309;
+    font-weight: 700;
+  }
+  html[data-theme="dark"] .interim-preview {
+    color: #fbb212;
+  }
+  .final-history {
+    color: var(--text);
+  }
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-val {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #b45309;
+    font-family: monospace;
+  }
+  html[data-theme="dark"] .stat-val {
+    color: #fbb212;
+  }
+  .stat-lbl {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .audio-visualizer-bar {
+    height: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 4px;
+    display: none;
+  }
+  .audio-visualizer-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #10b981, #fbb212, #ef4444);
+    transition: width 0.06s ease;
+    border-radius: 999px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="speaker-container">
+  <div class="speaker-card">
+    <div class="speaker-header-info">
+      <div>
+        <span class="stage-badge-xl">{{ session.id | upper }}</span>
+        <h1 class="speaker-title">{{ session.name }}</h1>
+        <div class="speaker-meta">
+          🎤 Presentador: <strong>{{ session.speaker }}</strong>
+        </div>
+      </div>
+      <div id="statusPill" class="live-status-pill status-idle">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: currentColor;"></span>
+        <span id="statusPillText">Micrófono en Espera</span>
+      </div>
+    </div>
+
+    <!-- Language & Engine Settings for Speaker -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+      <div>
+        <label for="speakerLangSelect" style="font-size: 0.85rem; font-weight: 700; color: var(--muted); display: block; margin-bottom: 6px;" data-i18n="speaker.field_lang">🗣️ Idioma en que hablarás:</label>
+        <select id="speakerLangSelect" class="form-control" style="width: 100%;">
+          <option value="en" {% if session.source_language == 'en' %}selected{% endif %}>English (Inglés)</option>
+          <option value="es" {% if session.source_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
+          <option value="pt" {% if session.source_language == 'pt' %}selected{% endif %}>Português (Portuguese)</option>
+          <option value="fr" {% if session.source_language == 'fr' %}selected{% endif %}>Français (French)</option>
+          <option value="de" {% if session.source_language == 'de' %}selected{% endif %}>Deutsch (German)</option>
+          <option value="it" {% if session.source_language == 'it' %}selected{% endif %}>Italiano (Italian)</option>
+          <option value="zh-CN" {% if session.source_language == 'zh-CN' %}selected{% endif %}>中文 (Chinese)</option>
+          <option value="ja" {% if session.source_language == 'ja' %}selected{% endif %}>日本語 (Japanese)</option>
+        </select>
+      </div>
+      <div>
+        <label for="speakerEngineSelect" style="font-size: 0.85rem; font-weight: 700; color: var(--muted); display: block; margin-bottom: 6px;">🎙️ Motor de Reconocimiento:</label>
+        <select id="speakerEngineSelect" class="form-control" style="width: 100%;">
+          <option value="webspeech" selected>Web Speech API (Nativo de Google Chrome / Edge)</option>
+          <option value="whisper">Whisper Local (En Navegador - WebGPU/WASM)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Big Action Button -->
+    <div>
+      <button id="bigMicBtn" class="big-mic-btn idle" onclick="toggleSpeakerBroadcast()">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span id="bigMicBtnText" data-i18n="speaker.btn_start">Iniciar Transmisión de Micrófono</span>
+      </button>
+      <div class="audio-visualizer-bar" id="audioVisualizerBar">
+        <div class="audio-visualizer-fill" id="audioVisualizerFill"></div>
+      </div>
+    </div>
+
+    <!-- Teleprompter / Live Speech Monitor -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--muted);" data-i18n="speaker.monitor_title">🎙️ Monitor en Vivo (Lo que escucha tu micrófono):</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(230, 62, 74, 0.1); border: 1px solid rgba(230, 62, 74, 0.3); color: #e63e4a; font-weight: 700;" onclick="clearSpeakerMonitor()">🗑️ Limpiar</button>
+          <span style="font-size: 0.78rem; color: #219f9d; font-weight: 700;">● Feedback Directo</span>
+        </div>
+      </div>
+      <div class="monitor-box" id="monitorBox">
+        <div class="final-history" id="finalHistory">Presiona el botón para comenzar a hablar o escribe abajo para probar...</div>
+        <div class="interim-preview" id="interimPreview"></div>
+      </div>
+
+      <!-- Quick Manual Text Input -->
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <input type="text" id="speakerManualInput" class="form-control" style="flex: 1; font-size: 0.85rem;" placeholder="Escribe un mensaje de prueba para emitir a la audiencia (ej: Bienvenidos a Nerdearla)..." onkeydown="if(event.key==='Enter') sendSpeakerManualText()" />
+        <button type="button" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem; font-weight: 700;" onclick="sendSpeakerManualText()">Enviar Subtítulo</button>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div>
+        <div class="stat-val" id="viewersCount">{{ session.viewers_count }}</div>
+        <div class="stat-lbl">Espectadores en Vivo</div>
+      </div>
+      <div>
+        <div class="stat-val" id="targetLangsVal">{{ session.target_languages | join(', ') | upper }}</div>
+        <div class="stat-lbl">Subtítulos Audiencia</div>
+      </div>
+      <div>
+        <div class="stat-val" id="liveLatency">-- ms</div>
+        <div class="stat-lbl">Latencia Total</div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1rem;">
+      <a href="/session/{{ session.id }}" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); font-size: 0.85rem;">
+        Abrir Pantalla de Audiencia ↗
+      </a>
+      <a href="/producer" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); font-size: 0.85rem;">
+        Volver a Producer
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SESSION_ID = {{ session.id | tojson }};
+  const SPEECH_LANG_MAP = {
+    'en': 'en-US',
+    'es': 'es-ES',
+    'pt': 'pt-BR',
+    'fr': 'fr-FR',
+    'de': 'de-DE',
+    'it': 'it-IT',
+    'ru': 'ru-RU',
+    'zh-CN': 'zh-CN',
+    'ja': 'ja-JP'
+  };
+
+  let ws = null;
+  let recognition = null;
+  let isBroadcasting = false;
+  let startTime = null;
+  let lastInterimSent = 0;
+
+  const bigMicBtn = document.getElementById('bigMicBtn');
+  const bigMicBtnText = document.getElementById('bigMicBtnText');
+  const statusPill = document.getElementById('statusPill');
+  const statusPillText = document.getElementById('statusPillText');
+  const finalHistory = document.getElementById('finalHistory');
+  const interimPreview = document.getElementById('interimPreview');
+  const speakerLangSelect = document.getElementById('speakerLangSelect');
+  const speakerEngineSelect = document.getElementById('speakerEngineSelect');
+  const monitorBox = document.getElementById('monitorBox');
+  let whisperEngine = null;
+  let whisperMediaStream = null;
+
+  // Live Audio Meter
+  let audioContext = null;
+  let audioAnalyser = null;
+  let audioMicStream = null;
+  let audioVisualizerLoopId = null;
+
+  function startAudioVisualizer(stream) {
+    try {
+      if (!stream) return;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      audioContext = new AudioCtx();
+      const source = audioContext.createMediaStreamSource(stream);
+      audioAnalyser = audioContext.createAnalyser();
+      audioAnalyser.fftSize = 64;
+      source.connect(audioAnalyser);
+      
+      const vizBar = document.getElementById('audioVisualizerBar');
+      const vizFill = document.getElementById('audioVisualizerFill');
+      if (vizBar) vizBar.style.display = 'block';
+
+      const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+      function updateMeter() {
+        if (!isBroadcasting || !audioAnalyser) return;
+        audioAnalyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        let avg = sum / dataArray.length;
+        let percent = Math.min(100, Math.round((avg / 128) * 100));
+        if (vizFill) vizFill.style.width = `${Math.max(percent, 4)}%`;
+        audioVisualizerLoopId = requestAnimationFrame(updateMeter);
+      }
+      updateMeter();
+    } catch(e) {
+      console.warn('Visualizer unavailable:', e);
+    }
+  }
+
+  function stopAudioVisualizer() {
+    if (audioVisualizerLoopId) cancelAnimationFrame(audioVisualizerLoopId);
+    audioVisualizerLoopId = null;
+    const vizBar = document.getElementById('audioVisualizerBar');
+    const vizFill = document.getElementById('audioVisualizerFill');
+    if (vizBar) vizBar.style.display = 'none';
+    if (vizFill) vizFill.style.width = '0%';
+    if (audioContext) {
+      try { audioContext.close(); } catch(e){}
+      audioContext = null;
+    }
+    if (audioMicStream) {
+      try { audioMicStream.getTracks().forEach(t => t.stop()); } catch(e){}
+      audioMicStream = null;
+    }
+  }
+
+  async function toggleSpeakerBroadcast() {
+    if (isBroadcasting) {
+      stopBroadcast();
+    } else {
+      await startBroadcast();
+    }
+  }
+
+  const NERDEARLA_REGEX = /\b(?:nerd(?:[-_.\s]*(?:e?ar\s*la|earl[ay]?|ear|er\s*la|eala|e\s*a\s*la|e\s*arla|a\s*la|dar\s*la|diar\s*la|dia\s*la|iar\s*la|ia\s*la|ierla|eada|eado|arlo|alas|alos|ela|ala|alla|alta|era|la)|[\.]la)|nerd\s+(?:de\s+)?(?:habla|aula|charla|arla|alma|armas)|nerd\s+y\s+(?:habla|arla)|nerdy\s*(?:arla|earla)|merd(?:[-_.\s]*(?:e?ar\s*la|er\s*la|eada|ear))|verd(?:[-_.\s]*(?:ear\s*la|e\s+habla)))\b/gi;
+
+  function normalizeNerdearla(text) {
+    if (!text) return text;
+    return text.replace(NERDEARLA_REGEX, 'Nerdearla');
+  }
+
+  function ensureWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      try {
+        if (ws) { try { ws.close(); } catch(e){} }
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws/session/${SESSION_ID}/producer`);
+        ws.onopen = () => console.log('Connected to producer WebSocket');
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'clear_history') clearSpeakerMonitor();
+            if (data.metrics && data.metrics.total_ms) {
+              document.getElementById('liveLatency').textContent = `${Math.round(data.metrics.total_ms)} ms`;
+            }
+          } catch(err){}
+        };
+        ws.onerror = (err) => console.error('WS Error:', err);
+      } catch(err) {
+        console.error('WebSocket connection error:', err);
+      }
+    }
+  }
+
+  async function startBroadcast() {
+    const engine = (speakerEngineSelect ? speakerEngineSelect.value : 'webspeech') || 'webspeech';
+    const sourceLang = speakerLangSelect ? speakerLangSelect.value || 'en' : 'en';
+
+    isBroadcasting = true;
+    startTime = performance.now();
+    lastInterimSent = 0;
+
+    // Immediately update UI to recording state
+    bigMicBtn.className = 'big-mic-btn broadcasting';
+    bigMicBtnText.textContent = '🔴 EN VIVO — Detener Transmisión';
+    statusPill.className = 'live-status-pill status-live';
+    statusPillText.textContent = `TRANSMITIENDO (${sourceLang.toUpperCase()})`;
+    finalHistory.textContent = '🎙️ Micrófono activo. Habla ahora para transmitir subtítulos en tiempo real...';
+    interimPreview.textContent = '';
+
+    ensureWebSocket();
+
+    if (engine === 'whisper') {
+      try {
+        statusPillText.textContent = 'Cargando Whisper Local...';
+        finalHistory.textContent = 'Inicializando modelo Whisper en tu navegador...';
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Navegador no soporta captura de micrófono.');
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+          video: false
+        });
+
+        if (!isBroadcasting) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        const { WhisperLocalEngine } = await import('/static/whisper/whisper-engine.mjs');
+        whisperMediaStream = stream;
+        whisperEngine = new WhisperLocalEngine({
+          model: 'tiny',
+          device: 'auto',
+          language: sourceLang,
+          onTranscript: ({ text, isFinal }) => {
+            if (!text || !isBroadcasting) return;
+            const norm = normalizeNerdearla(text);
+            const now = performance.now();
+            const audioTs = startTime ? (now - startTime) : 0;
+            if (isFinal) {
+              finalHistory.textContent = norm;
+              interimPreview.textContent = '';
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'final',
+                  text: norm,
+                  source_language: sourceLang,
+                  audio_timestamp: audioTs,
+                  client_sent_ms: Date.now()
+                }));
+              }
+            } else {
+              interimPreview.textContent = `[${norm}]`;
+              if (ws && ws.readyState === WebSocket.OPEN && (now - lastInterimSent >= 90)) {
+                lastInterimSent = now;
+                ws.send(JSON.stringify({
+                  type: 'interim',
+                  text: norm,
+                  source_language: sourceLang,
+                  audio_timestamp: audioTs,
+                  client_sent_ms: Date.now()
+                }));
+              }
+            }
+            monitorBox.scrollTop = monitorBox.scrollHeight;
+          },
+          onStatus: (status) => {
+            if (isBroadcasting) statusPillText.textContent = status;
+          }
+        });
+
+        await whisperEngine.load();
+        if (!isBroadcasting) return;
+        await whisperEngine.start(whisperMediaStream);
+        if (!isBroadcasting) return;
+
+        startAudioVisualizer(whisperMediaStream);
+        statusPillText.textContent = `TRANSMITIENDO (Whisper Local - ${sourceLang.toUpperCase()})`;
+        finalHistory.textContent = 'Escuchando tu voz con Whisper Local... Habla para transmitir.';
+      } catch (err) {
+        console.error('Whisper local start failed:', err);
+        finalHistory.textContent = `⚠️ Error en Whisper Local: ${err.message || err}`;
+        stopBroadcast();
+      }
+      return;
+    }
+
+    // Web Speech API Engine Path
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Tu navegador no soporta Web Speech API. Cambia al motor "Whisper Local" en el selector de arriba.');
+      finalHistory.textContent = '⚠️ Web Speech no soportado en este navegador. Selecciona "Whisper Local" arriba.';
+      stopBroadcast();
+      return;
+    }
+
+    // Attach sound level visualizer via getUserMedia in background
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        if (isBroadcasting) {
+          audioMicStream = stream;
+          startAudioVisualizer(stream);
+        } else {
+          stream.getTracks().forEach(t => t.stop());
+        }
+      }).catch(e => console.warn('Visualizer mic stream denied/ignored:', e));
+    }
+
+    function initSpeakerRecognition() {
+      if (!isBroadcasting) return;
+      try {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = SPEECH_LANG_MAP[sourceLang] || sourceLang;
+
+        const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+        if (SpeechGrammarList) {
+          try {
+            const speechRecognitionList = new SpeechGrammarList();
+            const grammar = '#JSGF V1.0; grammar nerdearla; public <term> = Nerdearla | Vibeathon | Kubernetes | DevOps ;';
+            speechRecognitionList.addFromString(grammar, 1);
+            recognition.grammars = speechRecognitionList;
+          } catch (_e) {}
+        }
+
+        recognition.onstart = () => {
+          if (!isBroadcasting) return;
+          bigMicBtn.className = 'big-mic-btn broadcasting';
+          bigMicBtnText.textContent = '🔴 EN VIVO — Detener Transmisión';
+          statusPill.className = 'live-status-pill status-live';
+          statusPillText.textContent = `TRANSMITIENDO (${recognition.lang})`;
+          if (finalHistory.textContent.includes('Iniciando')) {
+            finalHistory.textContent = 'Escuchando tu voz... Habla para transmitir subtítulos en tiempo real.';
+          }
+        };
+
+        recognition.onresult = (event) => {
+          if (!isBroadcasting) return;
+          const finalParts = [];
+          const interimParts = [];
+          const now = performance.now();
+          const audioTs = startTime ? (now - startTime) : 0;
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const t = (event.results[i][0].transcript || '').trim();
+            if (!t) continue;
+            if (event.results[i].isFinal) {
+              finalParts.push(t);
+            } else {
+              interimParts.push(t);
+            }
+          }
+
+          const interim = normalizeNerdearla(interimParts.join(' '));
+          const final = normalizeNerdearla(finalParts.join(' '));
+
+          if (interim) {
+            interimPreview.textContent = `[${interim}]`;
+            if (ws && ws.readyState === WebSocket.OPEN && (now - lastInterimSent >= 90)) {
+              lastInterimSent = now;
+              ws.send(JSON.stringify({
+                type: 'interim',
+                text: interim,
+                source_language: sourceLang,
+                audio_timestamp: audioTs,
+                client_sent_ms: Date.now()
+              }));
+            }
+          }
+
+          if (final) {
+            lastInterimSent = 0;
+            finalHistory.textContent = final;
+            interimPreview.textContent = '';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'final',
+                text: final,
+                source_language: sourceLang,
+                audio_timestamp: audioTs,
+                client_sent_ms: Date.now()
+              }));
+            }
+          }
+          monitorBox.scrollTop = monitorBox.scrollHeight;
+        };
+
+        recognition.onerror = (err) => {
+          if (err.error === 'not-allowed' || err.error === 'service-not-allowed') {
+            console.error('Recognition permission denied:', err.error);
+            finalHistory.textContent = '⚠️ Permiso de micrófono bloqueado por el navegador. Permite el acceso al micrófono.';
+            stopBroadcast();
+          } else if (err.error === 'audio-capture') {
+            console.error('No microphone found:', err.error);
+            finalHistory.textContent = '⚠️ No se encontró ningún micrófono activo.';
+            stopBroadcast();
+          } else if (err.error !== 'no-speech' && err.error !== 'network' && err.error !== 'aborted') {
+            console.warn('Recognition warning:', err.error);
+          }
+        };
+
+        recognition.onend = () => {
+          if (!isBroadcasting) return;
+          try {
+            if (recognition) recognition.abort();
+          } catch(e) {}
+          recognition = null;
+          setTimeout(() => {
+            if (isBroadcasting) {
+              try {
+                initSpeakerRecognition();
+              } catch(e) {
+                console.error('Error restarting speaker recognition:', e);
+              }
+            }
+          }, 150);
+        };
+
+        recognition.start();
+      } catch(e) {
+        console.error('Failed to start recognition:', e);
+        finalHistory.textContent = `⚠️ Error al iniciar reconocimiento de voz: ${e.message || e}`;
+        stopBroadcast();
+      }
+    }
+
+    initSpeakerRecognition();
+  }
+
+  function stopBroadcast() {
+    isBroadcasting = false;
+    stopAudioVisualizer();
+    if (recognition) {
+      try { recognition.abort(); } catch(e){}
+      recognition = null;
+    }
+    if (whisperEngine) {
+      try { whisperEngine.stop(); } catch(e){}
+      whisperEngine = null;
+    }
+    if (whisperMediaStream) {
+      try { whisperMediaStream.getTracks().forEach(t => t.stop()); } catch(e){}
+      whisperMediaStream = null;
+    }
+    if (ws) {
+      try { ws.close(); } catch(e){}
+      ws = null;
+    }
+    bigMicBtn.className = 'big-mic-btn idle';
+    bigMicBtnText.textContent = 'Iniciar Transmisión de Micrófono';
+    statusPill.className = 'live-status-pill status-idle';
+    statusPillText.textContent = 'Micrófono en Espera';
+    interimPreview.textContent = '';
+  }
+
+  function clearSpeakerMonitor() {
+    finalHistory.textContent = isBroadcasting ? 'Escuchando tu voz...' : 'Presiona el botón para comenzar a hablar o escribe abajo para probar...';
+    interimPreview.textContent = '';
+  }
+
+  async function sendSpeakerManualText() {
+    const input = document.getElementById('speakerManualInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    const sourceLang = speakerLangSelect ? speakerLangSelect.value || 'en' : 'en';
+
+    try {
+      const res = await fetch(`/api/session/${SESSION_ID}/inject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, type: 'final', source_language: sourceLang })
+      });
+      if (res.ok) {
+        finalHistory.textContent = `[Manual]: ${text}`;
+        interimPreview.textContent = '';
+        input.value = '';
+        monitorBox.scrollTop = monitorBox.scrollHeight;
+      } else {
+        alert('Error al emitir subtítulo manual');
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Error de conexión al enviar');
+    }
+  }
+
+  // Restore speaker preferences on load
+  (function initSpeakerPrefs() {
+    const savedLang = localStorage.getItem('srlt_speaker_lang_' + SESSION_ID);
+    if (savedLang && speakerLangSelect) {
+      speakerLangSelect.value = savedLang;
+    } else {
+      const uiLang = localStorage.getItem('srlt_ui_lang') || 'es';
+      if (speakerLangSelect) {
+        speakerLangSelect.value = uiLang === 'es' ? 'es' : 'en';
+      }
+    }
+    const savedEngine = localStorage.getItem('srlt_speaker_engine_' + SESSION_ID);
+    if (savedEngine && speakerEngineSelect) {
+      speakerEngineSelect.value = savedEngine;
+    }
+  })();
+
+  // Listen to UI language switch events
+  window.addEventListener('srlt-lang-change', (e) => {
+    const lang = e.detail && e.detail.lang;
+    if (lang && !localStorage.getItem('srlt_speaker_lang_' + SESSION_ID)) {
+      if (speakerLangSelect) {
+        speakerLangSelect.value = lang === 'es' ? 'es' : 'en';
+      }
+    }
+  });
+
+  if (speakerLangSelect) {
+    speakerLangSelect.addEventListener('change', () => {
+      localStorage.setItem('srlt_speaker_lang_' + SESSION_ID, speakerLangSelect.value);
+    });
+  }
+  if (speakerEngineSelect) {
+    speakerEngineSelect.addEventListener('change', () => {
+      localStorage.setItem('srlt_speaker_engine_' + SESSION_ID, speakerEngineSelect.value);
+    });
+  }
+
+  // Refresh viewer count and restore initial history
+  async function refreshStats() {
+    try {
+      const res = await fetch(`/api/sessions/${SESSION_ID}`);
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('viewersCount').textContent = data.viewers_count;
+        if (data.target_languages) {
+          document.getElementById('targetLangsVal').textContent = data.target_languages.join(', ').toUpperCase();
+        }
+        if (!isBroadcasting && data.history && data.history.length > 0) {
+          const lastEvent = data.history[data.history.length - 1];
+          if (lastEvent && lastEvent.original && finalHistory.textContent.includes('Presiona el botón')) {
+            finalHistory.textContent = `[Último]: ${lastEvent.original}`;
+          }
+        }
+      }
+    } catch(e){}
+  }
+  refreshStats();
+  setInterval(refreshStats, 3000);
+</script>
+{% endblock %}

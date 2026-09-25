@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f7fb" id="themeColorMeta" />
+    <title>{% block title %}Live Translator{% endblock %}</title>
+
+    <script>
+      (function () {
+        const KEY = 'srlt_theme';
+        const meta = document.getElementById('themeColorMeta');
+        let pref = null;
+        try {
+          pref = localStorage.getItem(KEY);
+        } catch (_e) {
+          pref = null;
+        }
+
+        const value = pref === 'light' || pref === 'dark' ? pref : 'system';
+        const root = document.documentElement;
+
+        if (value === 'system') {
+          root.removeAttribute('data-theme');
+        } else {
+          root.setAttribute('data-theme', value);
+        }
+
+        if (meta) {
+          const bg = value === 'dark' ? '#000000' : '#f6f7fb';
+          meta.setAttribute('content', bg);
+        }
+      })();
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light dark;
+
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --panel-2: #f1f5f9;
+        --panel-3: #e2e8f0;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: #cbd5e1;
+        --border-focus: #219f9d;
+        --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+        --shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.08);
+        --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.08);
+
+        --primary: #fbb212;
+        --primary-hover: #e5a00a;
+        --primary-press: #cc8e08;
+        --primary-text: #000000;
+        
+        --secondary: #219f9d;
+        --secondary-hover: #1a8381;
+        --secondary-press: #146b69;
+
+        --danger: #e63e4a;
+        --danger-hover: #cf2e3a;
+        --danger-press: #b82430;
+
+        --focus: #219f9d;
+
+        --radius: 14px;
+        --radius-sm: 10px;
+        --radius-xs: 6px;
+        --space-1: 8px;
+        --space-2: 12px;
+        --space-3: 16px;
+        --space-4: 24px;
+        --space-5: 32px;
+
+        --container: 1400px;
+        --log-font-size: 14px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #000000;
+          --panel: #0d0d0d;
+          --panel-2: #161616;
+          --panel-3: #222222;
+          --text: #f8fafc;
+          --muted: #94a3b8;
+          --border: rgba(255, 255, 255, 0.16);
+          --border-focus: #fbb212;
+          --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+          --shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 12px 28px rgba(0, 0, 0, 0.6);
+          --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.85);
+        }
+      }
+
+      html[data-theme="light"] {
+        color-scheme: light;
+      }
+
+      html[data-theme="light"]:root {
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --panel-2: #f1f5f9;
+        --panel-3: #e2e8f0;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: #cbd5e1;
+        --border-focus: #219f9d;
+        --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+        --shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.08);
+        --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.08);
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+      }
+
+      html[data-theme="dark"]:root {
+        --bg: #000000;
+        --panel: #0d0d0d;
+        --panel-2: #161616;
+        --panel-3: #222222;
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --border: rgba(255, 255, 255, 0.16);
+        --border-focus: #fbb212;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 12px 28px rgba(0, 0, 0, 0.6);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.85);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: var(--bg);
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: var(--space-3);
+        top: var(--space-3);
+        padding: 10px 12px;
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        transform: translateY(-200%);
+        transition: transform 160ms ease;
+        z-index: 100;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .page {
+        min-height: 100dvh;
+        padding: calc(var(--space-3) + env(safe-area-inset-top)) calc(var(--space-3) + env(safe-area-inset-right))
+          calc(var(--space-4) + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+
+      .topbar-inner {
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: var(--space-2);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: color-mix(in srgb, var(--panel) 92%, transparent);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+      }
+
+      @supports not (background: color-mix(in srgb, white 92%, transparent)) {
+        .topbar-inner {
+          background: var(--panel);
+        }
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        min-width: 180px;
+        text-decoration: none;
+      }
+
+      .brand-logo {
+        height: 28px;
+        width: auto;
+        max-width: 160px;
+        object-fit: contain;
+        display: block;
+        transition: transform 0.2s ease;
+      }
+
+      .brand:hover .brand-logo {
+        transform: scale(1.03);
+      }
+
+      .brand-badge-live {
+        background: #e63e4a;
+        color: #ffffff;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        padding: 2px 7px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 0 8px rgba(230, 62, 74, 0.4);
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 0.2px;
+        font-weight: 700;
+        text-wrap: balance;
+      }
+
+      .brand-subtitle {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
+        text-wrap: balance;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--space-2);
+      }
+
+      .control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      select,
+      input[type="password"],
+      input[type="text"],
+      input[type="number"] {
+        font: inherit;
+        padding: 9px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: var(--shadow-sm);
+        font-weight: 500;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      select:focus,
+      input:focus,
+      textarea:focus {
+        border-color: var(--border-focus);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(33, 159, 157, 0.2);
+      }
+
+      textarea {
+        font: inherit;
+        padding: 10px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: var(--shadow-sm);
+        resize: vertical;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .btn {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        padding: 8px 16px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        user-select: none;
+      }
+
+      .btn:hover {
+        background: var(--panel-2);
+        border-color: var(--text);
+        color: var(--text);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow);
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+        transform: none !important;
+        box-shadow: none !important;
+      }
+
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+
+      .theme-icon-sun,
+      .theme-icon-moon {
+        width: 18px;
+        height: 18px;
+      }
+
+      html[data-theme="dark"] .theme-icon-moon,
+      html:not([data-theme="dark"]) .theme-icon-sun {
+        display: none !important;
+      }
+
+      html[data-theme="dark"] .theme-icon-sun,
+      html:not([data-theme="dark"]) .theme-icon-moon {
+        display: block !important;
+      }
+
+      .btn-primary {
+        border-color: #d97706;
+        background: var(--primary);
+        color: #000000;
+        font-weight: 800;
+        box-shadow: 0 2px 6px rgba(251, 178, 18, 0.3);
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: #b45309;
+        color: #000000;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(251, 178, 18, 0.45);
+      }
+
+      .btn-primary:active {
+        background: var(--primary-press);
+        color: #000000;
+        transform: translateY(1px);
+      }
+
+      .btn-secondary {
+        border-color: #0f766e;
+        background: var(--secondary);
+        color: #ffffff;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(33, 159, 157, 0.3);
+      }
+
+      .btn-secondary:hover {
+        background: var(--secondary-hover);
+        border-color: #115e59;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(33, 159, 157, 0.45);
+      }
+
+      .btn-secondary:active {
+        background: var(--secondary-press);
+        color: #ffffff;
+        transform: translateY(1px);
+      }
+
+      .btn-danger {
+        border-color: #b91c1c;
+        background: var(--danger);
+        color: #ffffff;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(230, 62, 74, 0.3);
+      }
+
+      .btn-danger:hover {
+        background: var(--danger-hover);
+        border-color: #991b1b;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(230, 62, 74, 0.45);
+      }
+
+      .btn-danger:active {
+        background: var(--danger-press);
+        color: #ffffff;
+        transform: translateY(1px);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+
+      .badge::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.5;
+      }
+
+      .badge--neutral {
+        color: var(--muted);
+      }
+
+      .badge--success {
+        color: #16a34a;
+      }
+
+      .badge--danger {
+        color: #dc2626;
+      }
+
+      .badge--warn {
+        color: #d97706;
+      }
+
+      .message {
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+        background: var(--panel);
+        background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+        color: var(--text);
+        box-shadow: var(--shadow);
+      }
+
+      .main {
+        max-width: var(--container);
+        margin: 0 auto;
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        align-content: start;
+      }
+
+      .main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr) minmax(0, 1.75fr);
+        gap: var(--space-3);
+      }
+
+      @media (max-width: 980px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+        .brand {
+          min-width: auto;
+        }
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 240px;
+      }
+
+      .card-header {
+        padding: var(--space-2) var(--space-3);
+        border-bottom: 1px solid var(--border);
+        background: var(--panel-2);
+        background: color-mix(in srgb, var(--panel) 86%, var(--panel-2));
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-2);
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        text-wrap: balance;
+      }
+
+      .card-body {
+        padding: var(--space-2);
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      .log {
+        width: 100%;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: var(--space-2);
+        font-size: var(--log-font-size);
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        scroll-behavior: smooth;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .segment {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+        background: var(--panel);
+        background: color-mix(in srgb, var(--panel) 75%, var(--panel-2));
+        content-visibility: auto;
+        contain-intrinsic-size: 44px;
+        animation: segmentAppear 0.22s ease-out;
+      }
+
+      .segment-even {
+        background: var(--panel-2);
+        background: color-mix(in srgb, var(--panel) 68%, var(--panel-2));
+      }
+
+      .segment-odd {
+        background: var(--panel);
+        background: color-mix(in srgb, var(--panel) 82%, var(--panel-2));
+      }
+
+      .timestamp {
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+        color: var(--muted);
+        margin-right: 8px;
+        font-weight: 600;
+      }
+
+      .interim {
+        color: var(--text);
+        background: color-mix(in srgb, var(--primary) 12%, var(--panel));
+        border: 1.5px dashed var(--primary);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-style: normal;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 22%, transparent);
+        animation: interimPulse 2s ease-in-out infinite alternate;
+      }
+
+      .interim-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        padding: 2px 7px;
+        border-radius: 6px;
+        background: var(--primary);
+        color: #ffffff;
+        flex-shrink: 0;
+        user-select: none;
+      }
+
+      .interim-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ffffff;
+        animation: liveBlink 0.9s ease infinite alternate;
+      }
+
+      .interim-text {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      @keyframes interimPulse {
+        0% {
+          box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 15%, transparent);
+          border-color: var(--primary);
+        }
+        100% {
+          box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 35%, transparent);
+          border-color: color-mix(in srgb, var(--primary) 70%, #ffffff);
+        }
+      }
+
+      @keyframes liveBlink {
+        from { opacity: 0.3; }
+        to { opacity: 1; }
+      }
+
+      @keyframes segmentAppear {
+        from {
+          opacity: 0;
+          transform: translateY(-5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .auth-shell {
+        max-width: 520px;
+        margin: 0 auto;
+        width: 100%;
+        padding-top: var(--space-5);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .auth-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .auth-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        text-wrap: balance;
+      }
+
+      .auth-hint {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .auth-row {
+        display: flex;
+        gap: var(--space-2);
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .auth-row input[type="password"] {
+        flex: 1;
+        min-width: 240px;
+      }
+
+      .alert {
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+        background: var(--panel);
+        background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+      }
+
+            /* --- Modal Dialogs --- */
+      .modal[hidden] {
+        display: none !important;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-3);
+        overflow: hidden;
+      }
+
+      .modal-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.65);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 1;
+      }
+
+      .modal-card {
+        position: relative;
+        z-index: 2;
+        width: min(760px, 100%);
+        max-height: min(88dvh, 800px);
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow), 0 20px 40px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+
+      .modal-card form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        margin: 0;
+      }
+
+      .modal-header {
+        flex-shrink: 0;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+        background: var(--panel-2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+      }
+
+      .modal-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+      }
+
+      .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: 100%;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .field select,
+      .field input[type="text"],
+      .field input[type="number"],
+      .field input[type="password"],
+      .field textarea {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .settings-section-title {
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--primary);
+        padding-top: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--border);
+        margin-top: 4px;
+      }
+
+      .hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        min-height: 36px;
+        user-select: none;
+      }
+
+      .modal-actions {
+        flex-shrink: 0;
+        padding: var(--space-3) var(--space-4);
+        border-top: 1px solid var(--border);
+        background: var(--panel-2);
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 720px) {
+        .modal {
+          padding: 0;
+          align-items: flex-end;
+        }
+
+        .modal-card {
+          width: 100%;
+          max-height: 92dvh;
+          border-radius: 20px 20px 0 0;
+          border-bottom: none;
+          border-left: none;
+          border-right: none;
+        }
+
+        .modal-header {
+          padding: 12px 16px;
+        }
+
+        .modal-body {
+          padding: 16px;
+          gap: 14px;
+        }
+
+        .form-grid {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .field select,
+        .field input[type="text"],
+        .field input[type="number"],
+        .field input[type="password"],
+        .field textarea {
+          font-size: 16px; /* Prevents auto-zoom on iOS */
+          padding: 10px 12px;
+          min-height: 44px;
+        }
+
+        .modal-actions {
+          padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .modal-actions button {
+          width: 100%;
+          min-height: 44px;
+          font-size: 15px;
+        }
+      }
+
+
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 1ms !important;
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+
+    {% block head_extra %}{% endblock %}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="page">
+      {% block header %}
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a href="/" class="brand" style="text-decoration: none; color: inherit;">
+            <img src="https://nerdearla.com/static/images/NERDEARLA_black_nav.webp" alt="Nerdearla" class="brand-logo" onerror="this.onerror=null; this.src='/static/images/nerdearla_logo.webp';" />
+            <span class="brand-badge-live">LIVE</span>
+          </a>
+          <nav style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <a href="/" class="btn" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" data-i18n="nav.stages">Salas</a>
+            <a href="/producer" class="btn" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" title="Panel de Producción" data-i18n="nav.producer">🔒 Producción</a>
+            <a href="/demo" class="btn" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; background: rgba(33, 159, 157, 0.15); border: 1px solid rgba(33, 159, 157, 0.4); color: #219f9d; font-weight: 700;" data-i18n="nav.demo">Demo</a>
+            <a href="/standalone" class="btn" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" data-i18n="nav.standalone">Traductor</a>
+            <button class="btn" id="baseLangToggle" type="button" onclick="toggleUiLanguage()" style="padding: 6px 10px; font-size: 0.82rem; font-weight: 800; border: 1px solid var(--border); background: var(--panel-2); color: var(--text);" aria-label="Cambiar idioma de la interfaz" title="Cambiar idioma (Español / English)">
+              <span id="baseLangLabel">🌐 ES</span>
+            </button>
+            <button class="btn icon-btn" id="baseThemeToggle" type="button" onclick="toggleTheme()" aria-label="Cambiar tema" title="Cambiar tema">
+              <svg class="icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+              <svg class="icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </header>
+      {% endblock %}
+      {% block message %}{% endblock %}
+      <main id="main" class="main {% block main_class %}{% endblock %}" tabindex="-1">
+        {% block main %}
+        {% block content %}{% endblock %}
+        {% endblock %}
+      </main>
+    </div>
+    <script>
+      const I18N = {
+        es: {
+          "nav.stages": "Salas",
+          "nav.producer": "🔒 Producción",
+          "nav.demo": "Demo",
+          "nav.standalone": "Traductor",
+          "nav.theme": "Cambiar tema",
+          "nav.lang": "🌐 ES",
+          "skip.content": "Saltar al contenido",
+
+          "auth.title": "Acceso Staff y Producción",
+          "auth.hint": "Ingresa la contraseña para acceder al panel de control.",
+          "auth.label": "Contraseña",
+          "auth.placeholder": "Ingresa la contraseña...",
+          "auth.submit": "Ingresar",
+          "auth.invalid": "Contraseña incorrecta. Inténtalo de nuevo.",
+
+          "hub.title": "Salas de Conferencia y Transcripción en Vivo",
+          "hub.subtitle": "Selecciona tu sala para ver los subtítulos traducidos por IA en tiempo real desde cualquier dispositivo o Smart TV.",
+          "hub.search": "Buscar salas u oradores...",
+          "hub.live": "EN VIVO",
+          "hub.finished": "FINALIZADO",
+          "hub.paused": "PAUSADO",
+          "hub.scheduled": "PROGRAMADO",
+          "hub.audio": "Audio:",
+          "hub.subtitles": "Subtítulos:",
+          "hub.viewers": "Audiencia:",
+          "hub.btn_subtitles": "Ver Subtítulos",
+          "hub.btn_tv": "Pantalla TV",
+          "hub.btn_qr": "QR Móvil",
+          "hub.empty": "No se encontraron salas activas",
+
+          "session.badge_live": "EN VIVO",
+          "session.audio": "Audio:",
+          "session.subtitles": "Subtítulos:",
+          "session.fullscreen": "Pantalla Completa",
+          "session.exit_fullscreen": "✕ Salir de Pantalla Completa",
+          "session.font_size": "Tamaño",
+          "session.align": "Alinear",
+          "session.align_left": "Izquierda",
+          "session.align_center": "Centro",
+          "session.align_right": "Derecha",
+          "session.theme": "Tema",
+          "session.export": "📥 Exportar",
+          "session.export_txt": "📄 Texto Plano (.txt)",
+          "session.export_json": "📊 Formato JSON (.json)",
+          "session.export_srt": "🎬 Subtítulos (.srt)",
+          "session.connected": "🟢 Conectado",
+          "session.reconnecting": "🟡 Reconectando...",
+
+          "tv.theme_yellow": "🎨 Amarillo",
+          "tv.theme_cyan": "🎨 Cian",
+          "tv.theme_dark": "🎨 Oscuro",
+          "tv.theme_light": "🎨 Claro",
+          "tv.align": "Alinear (C)",
+          "tv.position": "Posición (P)",
+          "tv.font_minus": "A-",
+          "tv.font_plus": "A+",
+          "tv.qr_toggle": "QR (Q)",
+          "tv.fullscreen": "⛶ Pantalla Completa",
+          "tv.normal_view": "Vista Normal ↗",
+          "tv.shortcuts": "Atajos: C (Alinear) • P (Posición) • Q (QR) • +/- (Tamaño) • F (Pantalla Completa)",
+
+          "producer.title": "Panel de Producción y Control de Escenarios",
+          "producer.subtitle": "Administración centralizada de salas, subtitulado multilingüe y micrófonos en vivo.",
+          "producer.btn_new": "➕ Nueva Sala",
+          "producer.btn_logout": "Cerrar Sesión",
+          "producer.speaker": "🗣️ Presentador:",
+          "producer.stt_engine": "Motor STT:",
+          "producer.ai_trans": "Traducción IA:",
+          "producer.connected_viewers": "Audiencia conectada:",
+          "producer.btn_start_mic": "🎙️ Iniciar Transmisión de Productor",
+          "producer.btn_stop_mic": "⏹️ Detener Transmisión",
+          "producer.btn_edit": "✏️ Editar Sala",
+          "producer.btn_tv": "📺 Ver TV",
+          "producer.btn_qr": "📱 QR Audiencia",
+          "producer.btn_delete": "🗑️ Eliminar Sala",
+          "producer.inject_placeholder": "Inyectar subtítulo manual o anuncio en vivo...",
+          "producer.inject_send": "Enviar Subtítulo",
+          "producer.modal_create_title": "Crear Nueva Sala / Escenario",
+          "producer.modal_edit_title": "Editar Sala e Idiomas",
+          "producer.field_stage_id": "ID de Sala (ej. stage-c)",
+          "producer.field_stage_name": "Título de la Sala / Charla",
+          "producer.field_speaker": "Orador / Speaker",
+          "producer.field_source_lang": "🗣️ Idioma en que se presentará (Audio Orador):",
+          "producer.field_target_langs": "🎧 Idiomas de subtítulos para la audiencia:",
+          "producer.field_desc": "Descripción",
+          "producer.btn_cancel": "Cancelar",
+          "producer.btn_save": "Guardar Cambios",
+          "producer.btn_create": "Crear Sala",
+
+          "speaker.title": "Terminal del Orador / Speaker",
+          "speaker.subtitle": "Transmite tu voz directamente desde este dispositivo. La IA transcribirá y traducirá en tiempo real para la audiencia.",
+          "speaker.field_lang": "🗣️ Idioma en que hablarás:",
+          "speaker.field_engine": "🎙️ Motor de Reconocimiento:",
+          "speaker.pill_idle": "Micrófono en Espera",
+          "speaker.pill_live": "Micrófono Transmitiendo EN VIVO",
+          "speaker.btn_start": "Iniciar Transmisión de Micrófono",
+          "speaker.btn_stop": "Detener Transmisión de Micrófono",
+          "speaker.monitor_title": "🎙️ Monitor en Vivo (Lo que escucha tu micrófono):",
+
+          "standalone.title": "Traductor en Vivo",
+          "standalone.subtitle": "Web Speech & Motores IA",
+          "standalone.engine": "Motor",
+          "standalone.pair": "Idiomas",
+          "standalone.font": "Fuente",
+          "standalone.hide_src": "Ocultar idioma original",
+          "standalone.start": "Iniciar",
+          "standalone.stop": "Detener",
+          "standalone.settings": "Ajustes",
+          "standalone.source_title": "Idioma Original",
+          "standalone.target_a_title": "Traducción A",
+          "standalone.target_b_title": "Traducción B",
+          "standalone.modal_settings": "Ajustes",
+          "standalone.modal_appearance": "Apariencia",
+          "standalone.modal_theme": "Tema",
+          "standalone.modal_debug": "Registro de depuración",
+          "standalone.modal_webspeech": "Web Speech API",
+          "standalone.modal_recognition_lang": "Idioma de reconocimiento",
+          "standalone.modal_process_locally": "Procesar localmente (experimental)",
+          "standalone.modal_whisper": "Whisper (local, navegador)",
+          "standalone.modal_whisper_model": "Modelo Whisper",
+          "standalone.modal_whisper_device": "Backend de cómputo",
+          "standalone.modal_translation": "Traducción",
+          "standalone.modal_source": "Origen",
+          "standalone.modal_target_a": "Destino A",
+          "standalone.modal_target_b": "Destino B",
+          "standalone.modal_interim": "Traducir texto provisional en tiempo real",
+          "standalone.modal_save": "Guardar",
+          "standalone.modal_cancel": "Cancelar",
+          "standalone.onboarding_title": "Configuración de Idiomas",
+          "standalone.onboarding_hint": "Selecciona el idioma original y el idioma de destino para los subtítulos.",
+          "standalone.onboarding_continue": "Continuar",
+          "standalone.onboarding_skip": "Ahora no"
+        },
+        en: {
+          "nav.stages": "Stages",
+          "nav.producer": "🔒 Producer",
+          "nav.demo": "Demo",
+          "nav.standalone": "Translator",
+          "nav.theme": "Toggle theme",
+          "nav.lang": "🌐 EN",
+          "skip.content": "Skip to content",
+
+          "auth.title": "Staff & Producer Sign In",
+          "auth.hint": "Enter the password to access the control room.",
+          "auth.label": "Password",
+          "auth.placeholder": "Enter password...",
+          "auth.submit": "Sign In",
+          "auth.invalid": "Invalid credentials. Try again.",
+
+          "hub.title": "Live Conference & Subtitle Stages",
+          "hub.subtitle": "Select your stage to view real-time AI translated subtitles on any device or Smart TV.",
+          "hub.search": "Search stages or speakers...",
+          "hub.live": "LIVE",
+          "hub.finished": "FINISHED",
+          "hub.paused": "PAUSED",
+          "hub.scheduled": "SCHEDULED",
+          "hub.audio": "Audio:",
+          "hub.subtitles": "Subtitles:",
+          "hub.viewers": "Audience:",
+          "hub.btn_subtitles": "View Subtitles",
+          "hub.btn_tv": "TV Display",
+          "hub.btn_qr": "Mobile QR",
+          "hub.empty": "No active stages found",
+
+          "session.badge_live": "LIVE",
+          "session.audio": "Audio:",
+          "session.subtitles": "Subtitles:",
+          "session.fullscreen": "Fullscreen",
+          "session.exit_fullscreen": "✕ Exit Fullscreen",
+          "session.font_size": "Font Size",
+          "session.align": "Align",
+          "session.align_left": "Left",
+          "session.align_center": "Center",
+          "session.align_right": "Right",
+          "session.theme": "Theme",
+          "session.export": "📥 Export",
+          "session.export_txt": "📄 Plain Text (.txt)",
+          "session.export_json": "📊 JSON Format (.json)",
+          "session.export_srt": "🎬 Subtitles (.srt)",
+          "session.connected": "🟢 Connected",
+          "session.reconnecting": "🟡 Reconnecting...",
+
+          "tv.theme_yellow": "🎨 Yellow",
+          "tv.theme_cyan": "🎨 Cyan",
+          "tv.theme_dark": "🎨 Dark",
+          "tv.theme_light": "🎨 Light",
+          "tv.align": "Align (C)",
+          "tv.position": "Position (P)",
+          "tv.font_minus": "A-",
+          "tv.font_plus": "A+",
+          "tv.qr_toggle": "QR (Q)",
+          "tv.fullscreen": "⛶ Fullscreen",
+          "tv.normal_view": "Normal View ↗",
+          "tv.shortcuts": "Shortcuts: C (Align) • P (Position) • Q (QR) • +/- (Font Size) • F (Fullscreen)",
+
+          "producer.title": "Stage Producer & Control Room",
+          "producer.subtitle": "Centralized stage management, multilingual subtitles, and live microphones.",
+          "producer.btn_new": "➕ New Stage",
+          "producer.btn_logout": "Log Out",
+          "producer.speaker": "🗣️ Speaker:",
+          "producer.stt_engine": "STT Engine:",
+          "producer.ai_trans": "AI Translation:",
+          "producer.connected_viewers": "Connected audience:",
+          "producer.btn_start_mic": "🎙️ Start Live Producer Speech",
+          "producer.btn_stop_mic": "⏹️ Stop Speech",
+          "producer.btn_edit": "✏️ Edit Stage",
+          "producer.btn_tv": "📺 TV View",
+          "producer.btn_qr": "📱 Audience QR",
+          "producer.btn_delete": "🗑️ Delete Stage",
+          "producer.inject_placeholder": "Inject manual subtitle or live announcement...",
+          "producer.inject_send": "Send Subtitle",
+          "producer.modal_create_title": "Create New Stage",
+          "producer.modal_edit_title": "Edit Stage & Languages",
+          "producer.field_stage_id": "Stage ID (e.g. stage-c)",
+          "producer.field_stage_name": "Stage / Talk Title",
+          "producer.field_speaker": "Speaker",
+          "producer.field_source_lang": "🗣️ Speaker Audio Language:",
+          "producer.field_target_langs": "🎧 Audience Subtitle Languages:",
+          "producer.field_desc": "Description",
+          "producer.btn_cancel": "Cancel",
+          "producer.btn_save": "Save Changes",
+          "producer.btn_create": "Create Stage",
+
+          "speaker.title": "Speaker / Presenter Terminal",
+          "speaker.subtitle": "Broadcast your voice directly from this device. AI will transcribe and translate in real time for the audience.",
+          "speaker.field_lang": "🗣️ Language you will speak:",
+          "speaker.field_engine": "🎙️ Recognition Engine:",
+          "speaker.pill_idle": "Microphone Idle",
+          "speaker.pill_live": "Microphone Broadcasting LIVE",
+          "speaker.btn_start": "Start Microphone Broadcast",
+          "speaker.btn_stop": "Stop Microphone Broadcast",
+          "speaker.monitor_title": "🎙️ Live Monitor (What your microphone hears):",
+
+          "standalone.title": "Live Translator",
+          "standalone.subtitle": "Web Speech & AI Engines",
+          "standalone.engine": "Engine",
+          "standalone.pair": "Languages",
+          "standalone.font": "Font",
+          "standalone.hide_src": "Hide source language",
+          "standalone.start": "Start",
+          "standalone.stop": "Stop",
+          "standalone.settings": "Settings",
+          "standalone.source_title": "Source Language",
+          "standalone.target_a_title": "Target A",
+          "standalone.target_b_title": "Target B",
+          "standalone.modal_settings": "Settings",
+          "standalone.modal_appearance": "Appearance",
+          "standalone.modal_theme": "Theme",
+          "standalone.modal_debug": "Debug logging",
+          "standalone.modal_webspeech": "Web Speech API",
+          "standalone.modal_recognition_lang": "Recognition language",
+          "standalone.modal_process_locally": "Process locally (experimental)",
+          "standalone.modal_whisper": "Whisper (local, browser)",
+          "standalone.modal_whisper_model": "Whisper model",
+          "standalone.modal_whisper_device": "Compute backend",
+          "standalone.modal_translation": "Translation",
+          "standalone.modal_source": "Source",
+          "standalone.modal_target_a": "Target A",
+          "standalone.modal_target_b": "Target B",
+          "standalone.modal_interim": "Translate interim text in real time",
+          "standalone.modal_save": "Save",
+          "standalone.modal_cancel": "Cancel",
+          "standalone.onboarding_title": "Language Setup",
+          "standalone.onboarding_hint": "Choose a source language and a target subtitle language.",
+          "standalone.onboarding_continue": "Continue",
+          "standalone.onboarding_skip": "Not now"
+        }
+      };
+
+      function getUiLanguage() {
+        return localStorage.getItem('srlt_ui_lang') || 'es';
+      }
+
+      function setUiLanguage(lang) {
+        const currentLang = (lang === 'en' || lang === 'es') ? lang : 'es';
+        try { localStorage.setItem('srlt_ui_lang', currentLang); } catch(e){}
+        document.documentElement.setAttribute('lang', currentLang);
+        document.documentElement.setAttribute('data-ui-lang', currentLang);
+
+        const labels = document.querySelectorAll('.lang-toggle-btn, #baseLangToggle, #indexLangToggle');
+        labels.forEach(btn => {
+          const lbl = btn.querySelector('#baseLangLabel') || btn.querySelector('#indexLangLabel') || btn;
+          lbl.textContent = currentLang === 'es' ? '🌐 ES' : '🌐 EN';
+          btn.setAttribute('title', currentLang === 'es' ? 'Cambiar idioma (Español / English)' : 'Switch language (Spanish / English)');
+        });
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.textContent = I18N[currentLang][key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+          const key = el.getAttribute('data-i18n-placeholder');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.setAttribute('placeholder', I18N[currentLang][key]);
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+          const key = el.getAttribute('data-i18n-title');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.setAttribute('title', I18N[currentLang][key]);
+            el.setAttribute('aria-label', I18N[currentLang][key]);
+          }
+        });
+
+        window.dispatchEvent(new CustomEvent('srlt-lang-change', { detail: { lang: currentLang } }));
+      }
+
+      function toggleUiLanguage() {
+        const current = getUiLanguage();
+        const next = current === 'es' ? 'en' : 'es';
+        setUiLanguage(next);
+      }
+
+      function t(key, fallback = '') {
+        const lang = getUiLanguage();
+        return (I18N[lang] && I18N[lang][key]) || fallback || key;
+      }
+
+      function toggleTheme() {
+        const root = document.documentElement;
+        const current = root.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const next = current === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('srlt_theme', next); } catch(e){}
+        window.dispatchEvent(new CustomEvent('srlt-theme-change', { detail: { theme: next } }));
+      }
+
+      // Initial i18n run on load
+      document.addEventListener('DOMContentLoaded', () => {
+        setUiLanguage(getUiLanguage());
+      });
+      // Run immediately if DOM ready
+      if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        setUiLanguage(getUiLanguage());
+      }
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
