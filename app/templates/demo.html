@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Nerdearla Live Demo — 2 Simultaneous Live Stages{% endblock %}
+
+{% block head_extra %}
+<style>
+  .demo-hero {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(33, 159, 157, 0.15);
+    color: #219f9d;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(33, 159, 157, 0.3);
+  }
+  .demo-controls-bar {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .demo-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    min-height: 550px;
+  }
+  @media (max-width: 900px) {
+    .demo-split-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .stage-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .stage-panel-header {
+    padding: 12px 18px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .feed-box {
+    padding: 16px;
+    overflow-y: auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 480px;
+    background: var(--panel);
+  }
+  .feed-card {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    border-left: 4px solid var(--primary);
+    animation: fadeIn 0.2s ease-out;
+  }
+  .feed-card.stage-b-card {
+    border-left-color: #219f9d;
+  }
+  .feed-card.interim {
+    border-left-color: #fbb212;
+    opacity: 0.85;
+  }
+  .feed-translation {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .feed-original {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .feed-meta {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: monospace;
+    margin-top: 4px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="demo-hero">
+  <div class="demo-badge">
+    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#e63e4a;"></span>
+    Nerdearla Vibeathon 2026 Live Multi-Session Demonstration
+  </div>
+  <h1 style="font-size: 2.2rem; font-weight: 800; margin: 0.25rem 0 0.5rem; background: linear-gradient(135deg, var(--text) 40%, #fbb212 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    Simultaneous 2-Stage Live Captioning & Translation
+  </h1>
+  <p style="color: var(--muted); max-width: 700px; margin: 0 auto; font-size: 0.95rem;">
+    Demonstrating two independent conference stages running concurrently with complete WebSocket session isolation, real-time English → Spanish translation, technical glossary handling, and sub-second latency.
+  </p>
+</div>
+
+<div class="demo-controls-bar">
+  <button id="startDemoBtn" class="btn" style="background: #fbb212; color: #000000; font-weight: 700; padding: 10px 20px;" onclick="toggleDemoSimulation()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    Start 2-Stage Live Stream Simulation
+  </button>
+  <button class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" onclick="resetDemo()">
+    Reset Feed
+  </button>
+  <a href="/session/stage-a" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #fbb212; font-weight: 600;">
+    Open Stage A Tab ↗
+  </a>
+  <a href="/session/stage-b" target="_blank" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: #219f9d; font-weight: 600;">
+    Open Stage B Tab ↗
+  </a>
+</div>
+
+<div class="demo-split-grid">
+  <!-- Stage A Panel -->
+  <div class="stage-panel" id="panelStageA">
+    <div class="stage-panel-header">
+      <div>
+        <span style="font-weight: 800; color: #000000; background: #fbb212; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">STAGE A</span>
+        <strong style="margin-left: 8px;">AI & Open Source</strong>
+      </div>
+      <div style="font-size: 0.8rem; color: #e63e4a; font-weight: 600;">
+        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e63e4a; margin-right: 4px;"></span>
+        LIVE • <span id="latA">620 ms</span>
+      </div>
+    </div>
+    <div class="feed-box" id="feedA">
+      <div class="feed-card" style="border-left-color: var(--border);">
+        <div class="feed-translation">Esperando inicio de sesión en Stage A...</div>
+        <div class="feed-original">Waiting for Stage A speaker...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage B Panel -->
+  <div class="stage-panel" id="panelStageB">
+    <div class="stage-panel-header">
+      <div>
+        <span style="font-weight: 800; color: #ffffff; background: #219f9d; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">STAGE B</span>
+        <strong style="margin-left: 8px;">Cloud Infrastructure & DevOps</strong>
+      </div>
+      <div style="font-size: 0.8rem; color: #e63e4a; font-weight: 600;">
+        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e63e4a; margin-right: 4px;"></span>
+        LIVE • <span id="latB">710 ms</span>
+      </div>
+    </div>
+    <div class="feed-box" id="feedB">
+      <div class="feed-card stage-b-card" style="border-left-color: var(--border);">
+        <div class="feed-translation">Esperando inicio de sesión en Stage B...</div>
+        <div class="feed-original">Waiting for Stage B speaker...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Sample realistic tech conference transcripts with technical terms
+  const STAGE_A_SCRIPT = [
+    { interim: "Welcome everyone to Nerdearla", final: "Welcome everyone to Nerdearla 2026 AI and Open Source stage!" },
+    { interim: "Today we are discussing running local neural networks", final: "Today we are discussing running local neural networks directly in the browser using WebGPU and ONNX Runtime." },
+    { interim: "Our open source real-time STT engine", final: "Our open source real-time STT engine eliminates latency without compromising user privacy." },
+    { interim: "Please submit your pull request", final: "Please submit your pull request to the GitHub repository after this session." },
+    { interim: "Let us see the architecture of the deployment", final: "Let us see the architecture of the deployment with zero external dependencies." },
+  ];
+
+  const STAGE_B_SCRIPT = [
+    { interim: "Good morning and welcome to the Cloud Infrastructure stage", final: "Good morning and welcome to the Cloud Infrastructure stage at Nerdearla!" },
+    { interim: "Managing multi-region Kubernetes clusters", final: "Managing multi-region Kubernetes clusters requires robust observability and automated failover." },
+    { interim: "Each container in our deployment pipeline", final: "Each container in our deployment pipeline is automatically scanned for security vulnerabilities." },
+    { interim: "The load balancer distributes traffic", final: "The load balancer distributes traffic evenly to maintain low latency and high throughput." },
+    { interim: "Thank you for joining our DevOps workshop", final: "Thank you for joining our DevOps workshop today!" },
+  ];
+
+  let wsA = null;
+  let wsB = null;
+  let isSimulating = false;
+  let simTimerA = null;
+  let simTimerB = null;
+  let stepA = 0;
+  let stepB = 0;
+
+  function connectStageSockets() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // Connect Isolated Demo Stage A Viewer
+    wsA = new WebSocket(`${protocol}//${window.location.host}/ws/session/demo-stage-a/viewer`);
+    wsA.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        renderEvent('feedA', data, false);
+        if (data.metrics && data.metrics.total_ms) {
+          document.getElementById('latA').textContent = `${data.metrics.total_ms} ms`;
+        }
+      } catch(err){}
+    };
+
+    // Connect Isolated Demo Stage B Viewer
+    wsB = new WebSocket(`${protocol}//${window.location.host}/ws/session/demo-stage-b/viewer`);
+    wsB.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        renderEvent('feedB', data, true);
+        if (data.metrics && data.metrics.total_ms) {
+          document.getElementById('latB').textContent = `${data.metrics.total_ms} ms`;
+        }
+      } catch(err){}
+    };
+  }
+
+  let interimElA = null;
+  let interimElB = null;
+
+  function renderEvent(feedId, eventData, isStageB) {
+    const container = document.getElementById(feedId);
+    if (!container) return;
+
+    const cardClass = isStageB ? 'feed-card stage-b-card' : 'feed-card';
+    const esText = eventData.translations?.es || eventData.original;
+    const ptText = eventData.translations?.pt || eventData.original;
+    const origText = eventData.original;
+    const timingStr = eventData.metrics ? `STT: ${eventData.metrics.stt_ms || 240}ms | Transl: ${eventData.metrics.translation_ms || 320}ms | Total: ${eventData.metrics.total_ms || 590}ms` : '';
+
+    if (eventData.type === 'interim') {
+      let currentEl = isStageB ? interimElB : interimElA;
+      if (!currentEl) {
+        currentEl = document.createElement('div');
+        currentEl.className = `${cardClass} interim`;
+        container.appendChild(currentEl);
+        if (isStageB) interimElB = currentEl; else interimElA = currentEl;
+      }
+      currentEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div><span style="font-size:0.75rem; font-weight:800; color:#000000; background:#fbb212; padding:1px 6px; border-radius:4px; margin-right:6px;">🇪🇸 ES</span><strong>${esText}</strong></div>
+          <div><span style="font-size:0.75rem; font-weight:800; color:#ffffff; background:#219f9d; padding:1px 6px; border-radius:4px; margin-right:6px;">🇧🇷 PT</span><span style="color:var(--text);">${ptText}</span></div>
+        </div>
+        <div class="feed-original">🎙️ Original (${(eventData.source_language || 'EN').toUpperCase()}): ${origText}</div>
+      `;
+    } else {
+      let currentEl = isStageB ? interimElB : interimElA;
+      if (currentEl) {
+        currentEl.remove();
+        if (isStageB) interimElB = null; else interimElA = null;
+      }
+      const finalEl = document.createElement('div');
+      finalEl.className = cardClass;
+      finalEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div><span style="font-size:0.75rem; font-weight:800; color:#000000; background:#fbb212; padding:1px 6px; border-radius:4px; margin-right:6px;">🇪🇸 ES</span><strong>${esText}</strong></div>
+          <div><span style="font-size:0.75rem; font-weight:800; color:#ffffff; background:#219f9d; padding:1px 6px; border-radius:4px; margin-right:6px;">🇧🇷 PT</span><span style="color:var(--text);">${ptText}</span></div>
+        </div>
+        <div class="feed-original">🎙️ Original (${(eventData.source_language || 'EN').toUpperCase()}): ${origText}</div>
+        <div class="feed-meta">${timingStr}</div>
+      `;
+      container.appendChild(finalEl);
+    }
+    container.scrollTop = container.scrollHeight;
+  }
+
+  async function sendProducerText(sessionId, type, text) {
+    const startT = performance.now();
+    try {
+      await fetch(`/api/session/${sessionId}/inject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: type,
+          text: text,
+          audio_timestamp: startT,
+          client_sent_ms: Date.now()
+        })
+      });
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function toggleDemoSimulation() {
+    const btn = document.getElementById('startDemoBtn');
+    if (isSimulating) {
+      isSimulating = false;
+      clearTimeout(simTimerA);
+      clearTimeout(simTimerB);
+      btn.style.background = '#10b981';
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume Live Stream Simulation';
+      return;
+    }
+
+    isSimulating = true;
+    btn.style.background = '#f59e0b';
+    btn.innerHTML = '⏸ Pause Simulation';
+
+    function runStageAStep() {
+      if (!isSimulating) return;
+      const item = STAGE_A_SCRIPT[stepA % STAGE_A_SCRIPT.length];
+      stepA++;
+
+      // Send interim to isolated demo stage
+      sendProducerText('demo-stage-a', 'interim', item.interim);
+      
+      // Send final after 1.2s
+      setTimeout(() => {
+        if (!isSimulating) return;
+        sendProducerText('demo-stage-a', 'final', item.final);
+      }, 1200);
+
+      simTimerA = setTimeout(runStageAStep, 4200);
+    }
+
+    function runStageBStep() {
+      if (!isSimulating) return;
+      const item = STAGE_B_SCRIPT[stepB % STAGE_B_SCRIPT.length];
+      stepB++;
+
+      // Send interim to isolated demo stage
+      sendProducerText('demo-stage-b', 'interim', item.interim);
+      
+      // Send final after 1.4s
+      setTimeout(() => {
+        if (!isSimulating) return;
+        sendProducerText('demo-stage-b', 'final', item.final);
+      }, 1400);
+
+      simTimerB = setTimeout(runStageBStep, 4800);
+    }
+
+    runStageAStep();
+    setTimeout(runStageBStep, 1500);
+  }
+
+  function resetDemo() {
+    document.getElementById('feedA').innerHTML = '';
+    document.getElementById('feedB').innerHTML = '';
+    stepA = 0;
+    stepB = 0;
+  }
+
+  connectStageSockets();
+</script>
+{% endblock %}

@@ -1,0 +1,1101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.name }} — Live Subtitles (Stage {{ session.id | upper }}){% endblock %}
+
+{% block head_extra %}
+<style>
+  .audience-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    min-height: 550px;
+    transition: all 0.2s ease;
+  }
+  .stage-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .stage-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stage-badge-lg {
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+  }
+  .stage-title-sm {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .stage-speaker-sm {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .stage-langs-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .audience-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .control-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--panel-2);
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .control-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--panel-2);
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .btn-icon {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.15s ease;
+  }
+  .btn-icon:hover {
+    background: var(--panel-2);
+    border-color: var(--text);
+    transform: translateY(-1px);
+  }
+  .btn-icon:active {
+    transform: translateY(1px);
+  }
+  .btn-icon.active {
+    background: #fbb212;
+    color: #000000;
+    border-color: #d97706;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(251, 178, 18, 0.35);
+  }
+  .color-select {
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .subtitles-layout {
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+  .subtitles-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    position: relative;
+    scroll-behavior: smooth;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  .subtitles-box.font-normal {
+    font-size: 1.15rem;
+    line-height: 1.5;
+  }
+  .subtitles-box.font-large {
+    font-size: 1.6rem;
+    line-height: 1.5;
+  }
+  .subtitles-box.font-xlarge {
+    font-size: 2.2rem;
+    line-height: 1.45;
+  }
+  .subtitles-box.font-tv50 {
+    font-size: 3.2rem;
+    line-height: 1.35;
+    font-weight: 800;
+  }
+  .subtitles-box.font-tv65 {
+    font-size: 4.5rem;
+    line-height: 1.3;
+    font-weight: 800;
+  }
+  .subtitles-box.align-center {
+    text-align: center;
+  }
+  .subtitles-box.align-center .caption-item {
+    align-items: center;
+    text-align: center;
+    border-left: none;
+    border-bottom: 4px solid var(--primary);
+  }
+  .subtitles-box.align-center .caption-dual-row {
+    align-items: center;
+    width: 100%;
+  }
+  .subtitles-box.align-center .caption-block {
+    justify-content: center;
+    width: 100%;
+  }
+  .subtitles-box.align-center .caption-original {
+    text-align: center;
+    width: 100%;
+  }
+  .transcript-history {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex-grow: 1;
+  }
+  .caption-item {
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    border-left: 4px solid var(--primary);
+    animation: fadeIn 0.25s ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.2s ease;
+  }
+  .caption-item.interim {
+    border-left-color: #fbb212;
+    opacity: 0.88;
+    font-style: italic;
+  }
+  .caption-dual-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .caption-block {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .lang-pill {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: var(--radius-xs);
+    background: rgba(251, 178, 18, 0.15);
+    color: #b45309;
+    border: 1px solid rgba(217, 119, 6, 0.4);
+    flex-shrink: 0;
+    line-height: 1.2;
+  }
+  html[data-theme="dark"] .lang-pill {
+    color: #fbb212;
+  }
+  .lang-pill.lang-pill-2 {
+    background: rgba(33, 159, 157, 0.15);
+    color: #0f766e;
+    border: 1px solid rgba(33, 159, 157, 0.4);
+  }
+  html[data-theme="dark"] .lang-pill.lang-pill-2 {
+    color: #219f9d;
+  }
+  .lang-pill.lang-pill-3 {
+    background: rgba(230, 62, 74, 0.15);
+    color: #b91c1c;
+    border: 1px solid rgba(230, 62, 74, 0.4);
+  }
+  html[data-theme="dark"] .lang-pill.lang-pill-3 {
+    color: #e63e4a;
+  }
+  .caption-text-main {
+    color: var(--text);
+    font-weight: 700;
+  }
+  .caption-text-sub {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .caption-original {
+    color: var(--muted);
+    font-size: 0.78em;
+    border-top: 1px dashed var(--border);
+    padding-top: 4px;
+    margin-top: 2px;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .status-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 10px;
+    padding: 0 4px;
+  }
+  .export-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  .export-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    padding: 6px 0;
+    min-width: 140px;
+    z-index: 100;
+    margin-bottom: 6px;
+  }
+  .export-menu.show {
+    display: block;
+  }
+  .export-menu a {
+    display: block;
+    padding: 6px 14px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.82rem;
+  }
+  .export-menu a:hover {
+    background: var(--panel-2);
+  }
+
+  /* --- Subtitle Color Palettes --- */
+  /* 1. Yellow Gold Cinema (#fbb212) */
+  .color-yellow .subtitles-box {
+    background: #000000 !important;
+    color: #fbb212 !important;
+  }
+  .color-yellow .caption-item {
+    background: #0d0d0d !important;
+    border-left-color: #fbb212 !important;
+    border-bottom-color: #fbb212 !important;
+  }
+  .color-yellow .caption-text-main {
+    color: #fbb212 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+  }
+  .color-yellow .caption-text-sub {
+    color: #fef08a !important;
+  }
+  .color-yellow .caption-original {
+    color: #9ca3af !important;
+    border-top-color: #262626 !important;
+  }
+
+  /* 2. Teal Cyan (#219f9d) */
+  .color-cyan .subtitles-box {
+    background: #000000 !important;
+    color: #219f9d !important;
+  }
+  .color-cyan .caption-item {
+    background: #0d0d0d !important;
+    border-left-color: #219f9d !important;
+    border-bottom-color: #219f9d !important;
+  }
+  .color-cyan .caption-text-main {
+    color: #219f9d !important;
+  }
+  .color-cyan .caption-text-sub {
+    color: #5eead4 !important;
+  }
+  .color-cyan .caption-original {
+    color: #6b7280 !important;
+    border-top-color: #262626 !important;
+  }
+
+  /* 3. Coral Red Cinema (#e63e4a) */
+  .color-red .subtitles-box {
+    background: #000000 !important;
+    color: #e63e4a !important;
+  }
+  .color-red .caption-item {
+    background: #0d0d0d !important;
+    border-left-color: #e63e4a !important;
+    border-bottom-color: #e63e4a !important;
+  }
+  .color-red .caption-text-main {
+    color: #e63e4a !important;
+  }
+  .color-red .caption-text-sub {
+    color: #fca5a5 !important;
+  }
+  .color-red .caption-original {
+    color: #6b7280 !important;
+    border-top-color: #262626 !important;
+  }
+
+  /* 4. Pure White OLED */
+  .color-white .subtitles-box {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+  .color-white .caption-item {
+    background: #0d0d0d !important;
+    border-left-color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
+  }
+  .color-white .caption-text-main {
+    color: #ffffff !important;
+  }
+  .color-white .caption-text-sub {
+    color: #e2e8f0 !important;
+  }
+  .color-white .caption-original {
+    color: #71717a !important;
+    border-top-color: #262626 !important;
+  }
+  .color-white .caption-original {
+    color: #71717a !important;
+    border-top-color: #27272a !important;
+  }
+
+  /* 4. Matrix Green */
+  .color-green .subtitles-box {
+    background: #020b05 !important;
+    color: #4ade80 !important;
+  }
+  .color-green .caption-item {
+    background: #061f0d !important;
+    border-left-color: #22c55e !important;
+  }
+  .color-green .caption-text-main {
+    color: #4ade80 !important;
+  }
+  .color-green .caption-text-sub {
+    color: #86efac !important;
+  }
+  .color-green .caption-original {
+    color: #4b7a5a !important;
+    border-top-color: #14351f !important;
+  }
+
+  /* --- Fullscreen Cinema Mode on Mobile (iOS / Android / Desktop) --- */
+  :fullscreen .topbar,
+  :fullscreen .stage-topbar,
+  :fullscreen .status-footer,
+  .fullscreen-active .topbar,
+  .fullscreen-active .stage-topbar,
+  .fullscreen-active .status-footer {
+    display: none !important;
+  }
+
+  :fullscreen .page,
+  .fullscreen-active .page {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  :fullscreen .audience-container,
+  .fullscreen-active .audience-container {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999999 !important;
+    background: #000000 !important;
+  }
+
+  :fullscreen .subtitles-layout,
+  .fullscreen-active .subtitles-layout {
+    height: 100% !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  :fullscreen .subtitles-box,
+  .fullscreen-active .subtitles-box {
+    border: none !important;
+    border-radius: 0 !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: calc(env(safe-area-inset-top, 16px) + 20px) 20px calc(env(safe-area-inset-bottom, 16px) + 20px) !important;
+    box-shadow: none !important;
+    background: #000000 !important;
+  }
+
+  /* Floating Minimal Exit Button in Fullscreen (Visible on tap, auto-hiding on idle) */
+  .fullscreen-floating-exit {
+    display: none;
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 16px) + 12px);
+    right: calc(env(safe-area-inset-right, 16px) + 12px);
+    z-index: 1000000;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  }
+
+  :fullscreen .fullscreen-floating-exit,
+  .fullscreen-active .fullscreen-floating-exit {
+    display: inline-flex;
+  }
+
+  :fullscreen.user-active .fullscreen-floating-exit,
+  .fullscreen-active.user-active .fullscreen-floating-exit,
+  body.fullscreen-active.user-active .fullscreen-floating-exit,
+  body.fullscreen-active .fullscreen-floating-exit {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audience-container" id="audienceContainer">
+  <!-- Minimal Floating Exit Button for Fullscreen -->
+  <button id="floatingExitBtn" class="fullscreen-floating-exit" onclick="toggleFullscreen()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    ✕ Salir de Pantalla Completa
+  </button>
+
+  <div class="stage-topbar" id="stageTopbar">
+    <div class="stage-info">
+      <a href="/" class="btn-icon" title="Volver a los Escenarios" style="padding: 6px 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </a>
+      <span class="stage-badge-lg">{{ session.id | upper }}</span>
+      <div>
+        <h1 class="stage-title-sm" id="stageTitleText">{{ session.name }}</h1>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px;">
+          <span class="stage-speaker-sm">Orador: <strong id="stageSpeakerText">{{ session.speaker }}</strong></span>
+          <span class="stage-langs-badge" id="stageLangsBadge">
+            Audio: <span id="sourceLangTag">{{ session.source_language | upper }}</span> ➔ Subtítulos: <span id="targetLangsTag">{{ session.target_languages | join(', ') | upper }}</span>
+          </span>
+          <span style="background: rgba(139, 92, 246, 0.12); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">✨ Gemini AI</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="audience-controls">
+      <!-- Font Size Changer -->
+      <div class="control-group">
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-left: 4px;" data-i18n="session.font_size">Tamaño:</label>
+        <button id="fontBtnNormal" class="btn-icon" title="Normal (Móvil/Laptop)">A</button>
+        <button id="fontBtnLarge" class="btn-icon active" title="Grande (Laptop/Monitor)" style="font-weight: bold;">A+</button>
+        <button id="fontBtnXLarge" class="btn-icon" title="Extra Grande" style="font-weight: 900;">A++</button>
+        <button id="fontBtnTV50" class="btn-icon" title="Smart TV 50 pulgadas" style="font-weight: 900; color: #f59e0b;">50" TV</button>
+        <button id="fontBtnTV65" class="btn-icon" title="Smart TV 65+ pulgadas" style="font-weight: 900; color: #ef4444;">65"+ TV</button>
+      </div>
+
+      <!-- Alignment Position Changer -->
+      <div class="control-group">
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-left: 4px;" data-i18n="session.align">Posición:</label>
+        <button id="alignLeftBtn" class="btn-icon active" onclick="setBoxAlignment('left')" title="Alinear a la Izquierda" data-i18n="session.align_left">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+          Izq
+        </button>
+        <button id="alignCenterBtn" class="btn-icon" onclick="setBoxAlignment('center')" title="Centrar Subtítulos (Ideal TV)" data-i18n="session.align_center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
+          Centro
+        </button>
+      </div>
+
+      <!-- Subtitle Color Palette Selector -->
+      <div class="control-group">
+        <label for="colorSelector" style="font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-left: 4px;" data-i18n="session.theme">🎨 Color:</label>
+        <select id="colorSelector" class="color-select" onchange="changeColorTheme(this.value)">
+          <option value="yellow" selected>🟡 Oro Cine (#fbb212)</option>
+          <option value="cyan">🔷 Cian Teal (#219f9d)</option>
+          <option value="red">🔴 Coral Red (#e63e4a)</option>
+          <option value="white">⚪ Blanco Puro OLED</option>
+          <option value="default">🌐 Clásico</option>
+        </select>
+      </div>
+
+      <!-- Dedicated Smart TV 50-60" Mode Link -->
+      <a href="/display/{{ session.id }}" target="_blank" class="btn-icon" title="Abrir Pantalla Gigante Smart TV (50-60 pulgadas)" style="font-weight: 800; background: #fbb212; color: #000000; border: 1px solid rgba(0,0,0,0.2); text-decoration: none;" data-i18n="hub.btn_tv">
+        📺 Pantalla Smart TV ↗
+      </a>
+
+      <!-- QR Code Mobile Access -->
+      <button id="qrBtn" class="btn-icon" onclick="openQrModal()" title="Escanear QR para ver en el Móvil" style="font-weight: 700; color: #219f9d; border-color: rgba(33, 159, 157, 0.4); background: rgba(33, 159, 157, 0.1);" data-i18n="hub.btn_qr">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        QR Móvil
+      </button>
+
+      <!-- Fullscreen Toggle Button -->
+      <button id="fullscreenBtn" class="btn-icon" onclick="toggleFullscreen()" title="Pantalla Completa" style="font-weight: 600;" data-i18n="session.fullscreen">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Pantalla Completa
+      </button>
+
+      <!-- Export menu -->
+      <div class="export-dropdown">
+        <button id="exportToggleBtn" class="btn-icon" data-i18n="session.export">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+        <div id="exportMenu" class="export-menu">
+          <a id="exportVttLink" href="/api/session/{{ session.id }}/export/vtt?lang=es" target="_blank">Descargar WebVTT (.vtt)</a>
+          <a id="exportSrtLink" href="/api/session/{{ session.id }}/export/srt?lang=es" target="_blank" data-i18n="session.export_srt">🎬 Subtítulos (.srt)</a>
+          <a id="exportTxtLink" href="/api/session/{{ session.id }}/export/txt?lang=es" target="_blank" data-i18n="session.export_txt">📄 Texto Plano (.txt)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div class="modal-overlay" id="qrModal" style="display: none;" onclick="closeQrModal(event)">
+    <div class="modal-card" style="max-width: 400px; text-align: center; padding: 24px; border-radius: var(--radius); margin: auto;" onclick="event.stopPropagation()">
+      <h3 style="margin: 0 0 8px; font-size: 1.3rem;">📱 Subtítulos en tu Móvil</h3>
+      <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
+        Escanea este código con la cámara de tu celular para seguir los subtítulos en tiempo real desde tu asiento:
+      </p>
+      <div style="background: white; padding: 14px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 16px rgba(0,0,0,0.15); margin-bottom: 12px;">
+        <img id="qrImage" src="" alt="QR Code" style="width: 220px; height: 220px; display: block;" />
+      </div>
+      <div style="font-size: 0.78rem; word-break: break-all; color: var(--primary); font-family: monospace; background: var(--panel-2); padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 16px;" id="qrUrlText"></div>
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button class="btn" style="background: var(--primary); color: white; padding: 6px 16px;" onclick="copyStageUrl()">📋 Copiar Enlace</button>
+        <button class="btn" style="background: var(--panel-2); border: 1px solid var(--border);" onclick="closeQrModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="subtitles-layout">
+    <div class="subtitles-box font-large" id="captionsBox">
+      <div class="transcript-history" id="captionsList">
+        <div class="caption-item" id="welcomeCaption">
+          <div class="caption-dual-row" id="welcomeLangsBlock">
+            <!-- Initialized with producer-configured languages -->
+            {% for lang in session.target_languages %}
+            <div class="caption-block">
+              <span class="lang-pill {% if loop.index == 2 %}lang-pill-2{% elif loop.index > 2 %}lang-pill-3{% endif %}">{{ lang | upper }}</span>
+              <span class="caption-text-main">Esperando transmisión en vivo de {{ session.name }}...</span>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="caption-original">🎙️ Audio origen del orador: {{ session.source_language | upper }} • Subtitulado simultáneo configurado por el productor</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-footer" id="statusFooter">
+    <div>
+      <span id="wsStatusDot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #eab308; margin-right: 6px;"></span>
+      <span id="wsStatusText">Conectando a Stage {{ session.id | upper }}...</span>
+    </div>
+    <div id="latencyTag" style="font-family: monospace;">
+      Latencia: -- ms
+    </div>
+  </div>
+</div>
+
+<script>
+  const SESSION_ID = {{ session.id | tojson }};
+  const audienceContainer = document.getElementById('audienceContainer');
+  const captionsBox = document.getElementById('captionsBox');
+  const captionsList = document.getElementById('captionsList');
+  const wsStatusDot = document.getElementById('wsStatusDot');
+  const wsStatusText = document.getElementById('wsStatusText');
+  const latencyTag = document.getElementById('latencyTag');
+  const stageLangsBadge = document.getElementById('stageLangsBadge');
+  const sourceLangTag = document.getElementById('sourceLangTag');
+  const targetLangsTag = document.getElementById('targetLangsTag');
+
+  // Producer-configured languages for this room
+  let targetLanguages = {{ session.target_languages | tojson }};
+  let sourceLanguage = {{ session.source_language | tojson }};
+  let currentInterimEl = null;
+
+  const LANG_MAP = {
+    'es': { name: 'Español', flag: '🇪🇸' },
+    'pt': { name: 'Português', flag: '🇧🇷' },
+    'en': { name: 'English', flag: '🇺🇸' },
+    'fr': { name: 'Français', flag: '🇫🇷' },
+    'de': { name: 'Deutsch', flag: '🇩🇪' },
+    'it': { name: 'Italiano', flag: '🇮🇹' },
+    'ru': { name: 'Русский', flag: '🇷🇺' },
+    'zh-CN': { name: '中文', flag: '🇨🇳' },
+    'ja': { name: '日本語', flag: '🇯🇵' },
+  };
+
+  function openQrModal() {
+    const stageUrl = window.location.href;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(stageUrl)}`;
+    document.getElementById('qrImage').src = qrUrl;
+    document.getElementById('qrUrlText').textContent = stageUrl;
+    document.getElementById('qrModal').style.display = 'flex';
+  }
+
+  function closeQrModal(e) {
+    document.getElementById('qrModal').style.display = 'none';
+  }
+
+  async function copyStageUrl() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      alert('¡Enlace de la sala copiado al portapapeles!');
+    } catch(err) {
+      prompt('Copia este enlace:', window.location.href);
+    }
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Subtitle Color Palettes with Persistence
+  function changeColorTheme(themeName) {
+    audienceContainer.className = 'audience-container';
+    if (themeName !== 'default') {
+      audienceContainer.classList.add(`color-${themeName}`);
+    }
+    localStorage.setItem('srlt_viewer_color', themeName);
+  }
+
+  // Font size & Alignment state with Persistence
+  let currentFontSizeClass = localStorage.getItem('srlt_viewer_font') || 'font-large';
+  let currentAlignClass = localStorage.getItem('srlt_viewer_align') || 'align-left';
+
+  function applyBoxClasses() {
+    captionsBox.className = `subtitles-box ${currentFontSizeClass} ${currentAlignClass}`;
+  }
+
+  const fontBtnNormal = document.getElementById('fontBtnNormal');
+  const fontBtnLarge = document.getElementById('fontBtnLarge');
+  const fontBtnXLarge = document.getElementById('fontBtnXLarge');
+  const fontBtnTV50 = document.getElementById('fontBtnTV50');
+  const fontBtnTV65 = document.getElementById('fontBtnTV65');
+  const allFontBtns = [fontBtnNormal, fontBtnLarge, fontBtnXLarge, fontBtnTV50, fontBtnTV65];
+
+  function setFontSize(cls, activeBtn) {
+    currentFontSizeClass = cls;
+    localStorage.setItem('srlt_viewer_font', cls);
+    applyBoxClasses();
+    allFontBtns.forEach(b => b && b.classList.remove('active'));
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  fontBtnNormal.onclick = () => setFontSize('font-normal', fontBtnNormal);
+  fontBtnLarge.onclick = () => setFontSize('font-large', fontBtnLarge);
+  fontBtnXLarge.onclick = () => setFontSize('font-xlarge', fontBtnXLarge);
+  fontBtnTV50.onclick = () => setFontSize('font-tv50', fontBtnTV50);
+  fontBtnTV65.onclick = () => setFontSize('font-tv65', fontBtnTV65);
+
+  function setBoxAlignment(align) {
+    currentAlignClass = align === 'center' ? 'align-center' : 'align-left';
+    localStorage.setItem('srlt_viewer_align', currentAlignClass);
+    applyBoxClasses();
+    document.getElementById('alignCenterBtn').classList.toggle('active', align === 'center');
+    document.getElementById('alignLeftBtn').classList.toggle('active', align === 'left');
+  }
+
+  // Restore stored preferences on initial load
+  (function initPreferences() {
+    const savedColor = localStorage.getItem('srlt_viewer_color');
+    if (savedColor) {
+      const colorSelect = document.getElementById('colorSelector');
+      if (colorSelect) colorSelect.value = savedColor;
+      changeColorTheme(savedColor);
+    }
+    applyBoxClasses();
+    // Highlight correct font button
+    if (currentFontSizeClass === 'font-normal') fontBtnNormal.classList.add('active');
+    else if (currentFontSizeClass === 'font-large') fontBtnLarge.classList.add('active');
+    else if (currentFontSizeClass === 'font-xlarge') fontBtnXLarge.classList.add('active');
+    else if (currentFontSizeClass === 'font-tv50') fontBtnTV50.classList.add('active');
+    else if (currentFontSizeClass === 'font-tv65') fontBtnTV65.classList.add('active');
+
+    // Highlight correct alignment button
+    const isCenter = currentAlignClass === 'align-center';
+    document.getElementById('alignCenterBtn').classList.toggle('active', isCenter);
+    document.getElementById('alignLeftBtn').classList.toggle('active', !isCenter);
+  })();
+
+  // Universal Mobile & Desktop Fullscreen Support (iOS Safari, Android Chrome, Samsung, Desktop)
+  let wakeLockSentinel = null;
+  let userActivityTimeout = null;
+
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) {
+      console.debug('Wake lock error:', e);
+    }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLockSentinel) {
+      try {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
+      } catch (e) {}
+    }
+  }
+
+  function isFullscreenActive() {
+    return !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement ||
+      document.body.classList.contains('fullscreen-active') ||
+      audienceContainer.classList.contains('fullscreen-active')
+    );
+  }
+
+  function toggleFullscreen() {
+    const isFull = isFullscreenActive();
+    if (!isFull) {
+      // Activate fullscreen CSS mode immediately
+      document.body.classList.add('fullscreen-active');
+      document.documentElement.classList.add('fullscreen-active');
+      audienceContainer.classList.add('fullscreen-active');
+      showFullscreenUserActivity();
+      requestWakeLock();
+
+      const docEl = document.documentElement;
+      const rfs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      if (rfs) {
+        rfs.call(docEl).catch(() => {
+          // Native fullscreen failed or not supported (e.g. iPhone), CSS fullscreen is active!
+        });
+      }
+      setTimeout(() => {
+        captionsBox.scrollTop = captionsBox.scrollHeight;
+      }, 150);
+    } else {
+      // Exit fullscreen
+      document.body.classList.remove('fullscreen-active');
+      document.documentElement.classList.remove('fullscreen-active');
+      audienceContainer.classList.remove('fullscreen-active');
+      audienceContainer.classList.remove('user-active');
+      document.body.classList.remove('user-active');
+      releaseWakeLock();
+
+      const efs = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (efs && (document.fullscreenElement || document.webkitFullscreenElement)) {
+        efs.call(document).catch(() => {});
+      }
+      setTimeout(() => {
+        captionsBox.scrollTop = captionsBox.scrollHeight;
+      }, 150);
+    }
+  }
+
+  function onFullscreenChange() {
+    const nativeFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    if (nativeFull) {
+      document.body.classList.add('fullscreen-active');
+      document.documentElement.classList.add('fullscreen-active');
+      audienceContainer.classList.add('fullscreen-active');
+      requestWakeLock();
+      showFullscreenUserActivity();
+    } else {
+      document.body.classList.remove('fullscreen-active');
+      document.documentElement.classList.remove('fullscreen-active');
+      audienceContainer.classList.remove('fullscreen-active');
+      audienceContainer.classList.remove('user-active');
+      document.body.classList.remove('user-active');
+      releaseWakeLock();
+    }
+    captionsBox.scrollTop = captionsBox.scrollHeight;
+  }
+
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  document.addEventListener('mozfullscreenchange', onFullscreenChange);
+  document.addEventListener('MSFullscreenChange', onFullscreenChange);
+
+  // Show exit button briefly on touch / mouse movement in fullscreen
+  function showFullscreenUserActivity() {
+    if (isFullscreenActive()) {
+      audienceContainer.classList.add('user-active');
+      document.body.classList.add('user-active');
+      clearTimeout(userActivityTimeout);
+      userActivityTimeout = setTimeout(() => {
+        audienceContainer.classList.remove('user-active');
+        document.body.classList.remove('user-active');
+      }, 3500);
+    }
+  }
+
+  window.addEventListener('mousemove', showFullscreenUserActivity);
+  window.addEventListener('touchstart', showFullscreenUserActivity, { passive: true });
+  window.addEventListener('click', showFullscreenUserActivity);
+
+  // Double tap / double click on captions to toggle fullscreen
+  captionsBox.addEventListener('dblclick', (e) => {
+    if (e.target.closest('button, a, select')) return;
+    toggleFullscreen();
+  });
+
+  // Keyboard shortcut (ESC to exit, F for toggle)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (isFullscreenActive()) {
+        toggleFullscreen();
+      }
+    } else if (e.key === 'f' || e.key === 'F') {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      toggleFullscreen();
+    }
+  });
+
+  // Export menu toggle
+  const exportToggleBtn = document.getElementById('exportToggleBtn');
+  const exportMenu = document.getElementById('exportMenu');
+  exportToggleBtn.onclick = (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('show');
+  };
+  document.addEventListener('click', () => exportMenu.classList.remove('show'));
+
+  function updateCaptionElement(el, eventData) {
+    el.__eventData = eventData;
+    const srcLang = eventData.source_language || sourceLanguage || 'en';
+    const srcInfo = LANG_MAP[srcLang] || { name: srcLang.toUpperCase(), flag: '🎙️' };
+
+    // Languages configured by the producer for this stage, prioritized by the user's chosen UI language
+    const userLang = (typeof getUiLanguage === 'function' ? getUiLanguage() : localStorage.getItem('srlt_ui_lang')) || 'es';
+    let activeLangs = (targetLanguages && targetLanguages.length > 0) ? [...targetLanguages] : ['es'];
+    if (activeLangs.includes(userLang)) {
+      activeLangs = [userLang, ...activeLangs.filter(l => l !== userLang)];
+    }
+
+    let linesHtml = '';
+    activeLangs.forEach((langCode, index) => {
+      const langInfo = LANG_MAP[langCode] || { name: langCode.toUpperCase(), flag: '🌐' };
+      const text = (eventData.translations && eventData.translations[langCode]) 
+                   || (langCode === srcLang ? eventData.original : null)
+                   || (eventData.translations && eventData.translations.es)
+                   || eventData.original || '';
+      
+      const pillClass = index === 1 ? 'lang-pill lang-pill-2' : (index > 1 ? 'lang-pill lang-pill-3' : 'lang-pill');
+      const textClass = index === 0 ? 'caption-text-main' : 'caption-text-sub';
+
+      linesHtml += `
+        <div class="caption-block">
+          <span class="${pillClass}">${langInfo.flag} ${langCode.toUpperCase()}</span>
+          <span class="${textClass}">${escapeHtml(text)}</span>
+        </div>
+      `;
+    });
+
+    el.innerHTML = `
+      <div class="caption-dual-row">
+        ${linesHtml}
+      </div>
+      <div class="caption-original">
+        🎙️ Audio Orador (${srcInfo.flag} ${srcLang.toUpperCase()}): ${escapeHtml(eventData.original || '')}
+      </div>
+    `;
+  }
+
+  // Re-render captions when user changes global UI language
+  window.addEventListener('srlt-lang-change', () => {
+    document.querySelectorAll('.caption-card').forEach(card => {
+      if (card.__eventData) {
+        updateCaptionElement(card, card.__eventData);
+      }
+    });
+  });
+
+  const NERDEARLA_REGEX = /\b(?:nerd(?:[-_.\s]*(?:e?ar\s*la|earl[ay]?|ear|er\s*la|eala|e\s*a\s*la|e\s*arla|a\s*la|dar\s*la|diar\s*la|dia\s*la|iar\s*la|ia\s*la|ierla|eada|eado|arlo|alas|alos|ela|ala|alla|alta|era|la)|[\.]la)|nerd\s+(?:de\s+)?(?:habla|aula|charla|arla|alma|armas)|nerd\s+y\s+(?:habla|arla)|nerdy\s*(?:arla|earla)|merd(?:[-_.\s]*(?:e?ar\s*la|er\s*la|eada|ear))|verd(?:[-_.\s]*(?:ear\s*la|e\s+habla)))\b/gi;
+  function normalizeNerdearla(text) {
+    if (!text) return text;
+    return String(text).replace(NERDEARLA_REGEX, 'Nerdearla');
+  }
+
+  function handleTranscriptEvent(eventData) {
+    const welcome = document.getElementById('welcomeCaption');
+    if (welcome) welcome.remove();
+
+    if (eventData.original) eventData.original = normalizeNerdearla(eventData.original);
+    if (eventData.translations) {
+      for (const k in eventData.translations) {
+        eventData.translations[k] = normalizeNerdearla(eventData.translations[k]);
+      }
+    }
+
+    if (eventData.metrics && eventData.metrics.total_ms) {
+      latencyTag.textContent = `Latencia: ${eventData.metrics.total_ms} ms (STT: ${eventData.metrics.stt_ms || '-'}ms, Transl: ${eventData.metrics.translation_ms || '-'}ms)`;
+    }
+
+    if (eventData.type === 'interim') {
+      if (!currentInterimEl) {
+        currentInterimEl = document.createElement('div');
+        currentInterimEl.className = 'caption-item interim';
+        captionsList.appendChild(currentInterimEl);
+      }
+      updateCaptionElement(currentInterimEl, eventData);
+    } else if (eventData.type === 'final') {
+      if (currentInterimEl) {
+        currentInterimEl.remove();
+        currentInterimEl = null;
+      }
+      const finalEl = document.createElement('div');
+      finalEl.className = 'caption-item';
+      updateCaptionElement(finalEl, eventData);
+      captionsList.appendChild(finalEl);
+    }
+
+    // Auto-scroll to latest subtitle
+    captionsBox.scrollTop = captionsBox.scrollHeight;
+  }
+
+  // Connect to Viewer WebSocket
+  function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/session/${SESSION_ID}/viewer`;
+    
+    wsStatusDot.style.background = '#eab308';
+    wsStatusText.textContent = `Conectando a Stage ${SESSION_ID.toUpperCase()}...`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      wsStatusDot.style.background = '#10b981';
+      wsStatusText.textContent = `En vivo — Stage ${SESSION_ID.toUpperCase()} Conectado`;
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'handshake' && data.session) {
+          if (data.session.target_languages) {
+            targetLanguages = data.session.target_languages;
+            targetLangsTag.textContent = targetLanguages.join(', ').toUpperCase();
+          }
+          if (data.session.source_language) {
+            sourceLanguage = data.session.source_language;
+            sourceLangTag.textContent = sourceLanguage.toUpperCase();
+          }
+          if (data.session.speaker) document.getElementById('stageSpeakerText').textContent = data.session.speaker;
+          if (data.session.name) document.getElementById('stageTitleText').textContent = data.session.name;
+
+          // Restore and replay historical transcripts across reloads!
+          if (data.history && Array.isArray(data.history) && data.history.length > 0) {
+            const welcome = document.getElementById('welcomeCaption');
+            if (welcome) welcome.remove();
+            captionsList.innerHTML = '';
+            data.history.forEach(eventData => {
+              const el = document.createElement('div');
+              el.className = 'caption-item';
+              updateCaptionElement(el, eventData);
+              captionsList.appendChild(el);
+            });
+            captionsBox.scrollTop = captionsBox.scrollHeight;
+          }
+        } else if (data.type === 'config_update') {
+          if (data.target_languages) {
+            targetLanguages = data.target_languages;
+            targetLangsTag.textContent = targetLanguages.join(', ').toUpperCase();
+          }
+          if (data.source_language) {
+            sourceLanguage = data.source_language;
+            sourceLangTag.textContent = sourceLanguage.toUpperCase();
+          }
+          // Refresh all rendered captions with new producer configuration
+          document.querySelectorAll('.caption-item').forEach(el => {
+            if (el.__eventData) updateCaptionElement(el, el.__eventData);
+          });
+        } else if (data.type === 'clear_history') {
+          captionsList.innerHTML = '';
+          currentInterimEl = null;
+        } else if (data.type === 'interim' || data.type === 'final') {
+          handleTranscriptEvent(data);
+        }
+      } catch (err) {
+        console.error('Error parsing event:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      wsStatusDot.style.background = '#dc2626';
+      wsStatusText.textContent = 'Desconectado. Reconectando en 3s...';
+      setTimeout(connectWebSocket, 3000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  }
+
+  connectWebSocket();
+</script>
+{% endblock %}

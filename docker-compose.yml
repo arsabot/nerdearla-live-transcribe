@@ -1,0 +1,32 @@
+services:
+  nerdearla-live:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nerdearla-live
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - APP_PASSWORD=${APP_PASSWORD:-nerdearla2026}
+      - AUTH_SECRET=${AUTH_SECRET:-nerdearla-super-secret-key-2026}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - ENABLED_ENGINES=${ENABLED_ENGINES:-webspeech,whisper,nemotron,deepgram,elevenlabs,gemini_live}
+      - TRANSLATION_PROVIDER=${TRANSLATION_PROVIDER:-gemini-3.5-live}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.6-flash}
+      - GEMINI_LIVE_MODEL=${GEMINI_LIVE_MODEL:-gemini-3.5-live-translate-preview}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./credentials:/app/credentials:ro
+      - ./app/static/nemotron/models:/app/app/static/nemotron/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

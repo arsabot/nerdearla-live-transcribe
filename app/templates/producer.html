@@ -1,0 +1,1070 @@
+{% extends "base.html" %}
+
+{% block title %}Producer Dashboard — Nerdearla Live Operations{% endblock %}
+
+{% block head_extra %}
+<style>
+  .producer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .producer-title {
+    font-size: 1.85rem;
+    font-weight: 800;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .producer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (max-width: 600px) {
+    .producer-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .producer-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .stage-badge {
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+  }
+  .lang-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+    font-size: 0.8rem;
+  }
+  .lang-tag-src {
+    background: rgba(251, 178, 18, 0.15);
+    color: #b45309;
+    border: 1px solid rgba(217, 119, 6, 0.4);
+    padding: 3px 8px;
+    border-radius: var(--radius-xs);
+    font-weight: 800;
+  }
+  html[data-theme="dark"] .lang-tag-src {
+    color: #fbb212;
+  }
+  .lang-tag-dest {
+    background: rgba(33, 159, 157, 0.14);
+    color: #0f766e;
+    border: 1px solid rgba(33, 159, 157, 0.4);
+    padding: 3px 8px;
+    border-radius: var(--radius-xs);
+    font-weight: 800;
+  }
+  html[data-theme="dark"] .lang-tag-dest {
+    color: #219f9d;
+  }
+  .metrics-box {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    text-align: center;
+  }
+  .metric-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .metric-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #b45309;
+    font-family: monospace;
+  }
+  html[data-theme="dark"] .metric-value {
+    color: #fbb212;
+  }
+  .metric-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .producer-mic-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--panel-2);
+  }
+  .btn-mic-live {
+    background: #e63e4a;
+    color: white;
+    border: 1px solid #b91c1c;
+    padding: 9px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(230, 62, 74, 0.3);
+    transition: all 0.15s ease;
+  }
+  .btn-mic-live.idle {
+    background: #219f9d;
+    border-color: #0f766e;
+    box-shadow: 0 2px 6px rgba(33, 159, 157, 0.3);
+  }
+  .btn-mic-live:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  .btn-mic-live:active {
+    transform: translateY(1px);
+  }
+  .preview-log {
+    font-family: monospace;
+    font-size: 0.82rem;
+    max-height: 80px;
+    overflow-y: auto;
+    background: var(--panel-2);
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .modal-content {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.75rem;
+    max-width: 540px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-sizing: border-box;
+  }
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    background: var(--panel-2);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="producer-header">
+  <div>
+    <h1 class="producer-title" data-i18n="producer.title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Producer Control Room
+    </h1>
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
+      <span style="color: var(--muted); font-size: 0.85rem;" data-i18n="producer.subtitle">Administración centralizada de salas, subtitulado multilingüe y control de emisión en vivo.</span>
+    </div>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <button class="btn btn-primary" onclick="openCreateModal()" data-i18n="producer.btn_new">➕ Nueva Sala</button>
+    <button class="btn" style="background: rgba(230, 62, 74, 0.15); border: 1px solid rgba(230, 62, 74, 0.4); color: #e63e4a; font-weight: 700;" onclick="clearAllStagesHistory()">🗑️ Limpiar Todos los Registros</button>
+    <a href="/logout" class="btn" style="background: rgba(230, 62, 74, 0.15); border: 1px solid rgba(230, 62, 74, 0.4); color: #e63e4a;" data-i18n="producer.btn_logout">Cerrar Sesión</a>
+    <a href="/" class="btn" style="background: var(--panel-2); border: 1px solid var(--border); color: var(--text);" data-i18n="nav.stages">Salas</a>
+  </div>
+</div>
+
+<div class="producer-grid" id="producerGrid">
+  {% for session in sessions %}
+  <div class="producer-card" id="producer-card-{{ session.id }}" data-session='{{ session | tojson }}'>
+    <div>
+      <div class="card-top">
+        <div>
+          <span class="stage-badge">{{ session.id | upper }}</span>
+          <h2 style="font-size: 1.25rem; font-weight: 700; margin: 6px 0 2px;">{{ session.name }}</h2>
+          <span style="font-size: 0.85rem; color: var(--primary);">🎤 {{ session.speaker }}</span>
+        </div>
+        <select class="form-control" style="width: auto; font-size: 0.8rem;" onchange="updateStageStatus('{{ session.id }}', this.value)">
+          <option value="live" {% if session.status == 'live' %}selected{% endif %}>🟢 LIVE</option>
+          <option value="paused" {% if session.status == 'paused' %}selected{% endif %}>🟡 PAUSED</option>
+          <option value="scheduled" {% if session.status == 'scheduled' %}selected{% endif %}>⚪ SCHEDULED</option>
+          <option value="finished" {% if session.status == 'finished' %}selected{% endif %}>🏁 FINISHED</option>
+        </select>
+      </div>
+
+      <!-- Languages & Engine bar -->
+      <div class="lang-tags">
+        <span class="lang-tag-src">🗣️ Orador: {{ session.source_language | upper }}</span>
+        <span class="lang-tag-dest">🎧 Subtítulos: {{ session.target_languages | join(', ') | upper }}</span>
+        {% if session.engine in ['gemini_live', 'gemini-live'] %}
+        <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.8rem;">🟢 Gemini Live</span>
+        {% elif session.translation_provider == 'googletrans' %}
+        <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.8rem;">🟡 Google Translate fallback</span>
+        {% elif session.translation_provider in ['none', 'disabled', 'off'] %}
+        <span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.8rem;">🔴 Translation unavailable</span>
+        {% else %}
+        <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.8rem;">🟢 Gemini Live</span>
+        {% endif %}
+      </div>
+
+      <!-- Real-time metrics breakdown -->
+      <div class="metrics-box">
+        <div class="metric-item">
+          <span class="metric-value" id="viewers-count-{{ session.id }}">{{ session.viewers_count }}</span>
+          <span class="metric-label">Viewers</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="stt-lat-{{ session.id }}">{{ session.last_metrics.stt_ms if session.last_metrics and session.last_metrics.stt_ms is not none else '—' }}</span>
+          <span class="metric-label">STT (ms)</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="tr-lat-{{ session.id }}">{{ session.last_metrics.translation_ms if session.last_metrics and session.last_metrics.translation_ms is not none else '—' }}</span>
+          <span class="metric-label">Transl.</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="total-lat-{{ session.id }}">{{ session.last_metrics.total_ms if session.last_metrics and session.last_metrics.total_ms is not none else '—' }}</span>
+          <span class="metric-label">Total ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Producer Mic / Live Broadcast Controller -->
+    <div class="producer-mic-zone">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--muted);">🎙️ STT:</span>
+          <select id="engine-select-{{ session.id }}" class="form-control" style="width: auto; padding: 2px 6px; font-size: 0.75rem;" onchange="updateStageEngine('{{ session.id }}', this.value)">
+            <option value="webspeech" {% if session.engine == 'webspeech' %}selected{% endif %}>Web Speech</option>
+            <option value="whisper" {% if session.engine == 'whisper' %}selected{% endif %}>Whisper (Local)</option>
+            <option value="gemini_live" {% if session.engine in ['gemini_live', 'gemini-live'] %}selected{% endif %}>✨ Gemini Live (Experimental)</option>
+            <option value="nemotron" {% if session.engine == 'nemotron' %}selected{% endif %}>Nemotron (Local)</option>
+            <option value="deepgram" {% if session.engine == 'deepgram' %}selected{% endif %}>Deepgram (Nova-3)</option>
+            <option value="elevenlabs" {% if session.engine == 'elevenlabs' %}selected{% endif %}>ElevenLabs (Scribe)</option>
+          </select>
+        </div>
+        <div id="trans-control-{{ session.id }}" style="display: flex; align-items: center; gap: 4px; {% if session.engine in ['gemini_live', 'gemini-live'] %}opacity: 0.4; pointer-events: none;{% endif %}">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #219f9d;">✨ IA:</span>
+          <select id="trans-select-{{ session.id }}" class="form-control" style="width: auto; padding: 2px 6px; font-size: 0.75rem; color: #219f9d; font-weight: 700; border-color: rgba(33, 159, 157, 0.4); background: rgba(33, 159, 157, 0.08);" onchange="updateStageTranslationProvider('{{ session.id }}', this.value)" {% if session.engine in ['gemini_live', 'gemini-live'] %}disabled title="Gemini Live traduce audio directamente"{% endif %}>
+            <option value="gemini" {% if session.translation_provider in ['gemini', 'gemini-3.6-flash', 'gemini-3.5-live', 'gemini-flash-lite', 'gemini-flash'] or not session.translation_provider %}selected{% endif %}>Google Gemini 3.6 Flash (IA)</option>
+            <option value="googletrans" {% if session.translation_provider == 'googletrans' %}selected{% endif %}>Google Translate (Estándar)</option>
+            <option value="none" {% if session.translation_provider in ['none', 'disabled', 'off'] %}selected{% endif %}>Desactivada (Solo Original)</option>
+          </select>
+        </div>
+      </div>
+      <button id="mic-btn-{{ session.id }}" class="btn-mic-live idle" onclick="toggleStageProducerMic('{{ session.id }}', '{{ session.source_language }}')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span id="mic-label-{{ session.id }}">Start Live Producer Speech ({{ session.source_language | upper }})</span>
+      </button>
+      <div class="preview-log" id="preview-{{ session.id }}">Ready for broadcast...</div>
+      <div style="display: flex; gap: 6px; margin-top: 6px;">
+        <input type="text" id="manual-inject-{{ session.id }}" class="form-control" style="font-size: 0.78rem; padding: 4px 8px; flex: 1;" placeholder="Inyectar subtítulo o anuncio manual..." onkeydown="if(event.key==='Enter') injectManualStageText('{{ session.id }}')" />
+        <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700;" onclick="injectManualStageText('{{ session.id }}')">Enviar</button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="/display/{{ session.id }}" target="_blank" class="btn" style="padding: 4px 10px; font-size: 0.8rem; background: rgba(251, 178, 18, 0.15); border: 1px solid rgba(251, 178, 18, 0.4); color: #fbb212; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+          📺 Pantalla Smart TV ↗
+        </a>
+        <a href="/speaker/{{ session.id }}" target="_blank" class="btn" style="padding: 4px 10px; font-size: 0.8rem; background: rgba(33, 159, 157, 0.15); border: 1px solid rgba(33, 159, 157, 0.4); color: #219f9d; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+          🎤 Orador ↗
+        </a>
+        <button class="btn" style="padding: 4px 10px; font-size: 0.8rem; background: var(--panel-2); border: 1px solid var(--border);" onclick="openEditModal('{{ session.id }}')">
+          ✏️ Editar Sala
+        </button>
+        <button class="btn" style="padding: 4px 10px; font-size: 0.8rem; color: #e63e4a; background: rgba(230, 62, 74, 0.1); border: 1px solid rgba(230, 62, 74, 0.35); font-weight: 700;" onclick="clearStageHistory('{{ session.id }}')" title="Borrar subtítulos y eventos acumulados de esta sala">
+          🗑️ Borrar Registro
+        </button>
+        <button class="btn" style="padding: 4px 10px; font-size: 0.8rem; color: #fbb212; background: rgba(251, 178, 18, 0.1); border: 1px solid rgba(251, 178, 18, 0.3); font-weight: 700;" onclick="openStageQr('{{ session.id }}')">
+          📱 QR
+        </button>
+        <a href="/session/{{ session.id }}" target="_blank" style="font-size: 0.82rem; color: var(--primary); font-weight: 700; text-decoration: none; display: flex; align-items: center;">Audiencia ↗</a>
+      </div>
+      <button onclick="deleteStage('{{ session.id }}')" style="background: none; border: none; color: var(--danger); font-size: 0.8rem; cursor: pointer;">Delete</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal: Stage QR Code -->
+<div class="modal-overlay" id="stageQrModal" onclick="closeStageQr(event)">
+  <div class="modal-content" style="max-width: 440px; text-align: center; padding: 24px;" onclick="event.stopPropagation()">
+    <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; background: var(--panel-2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+      <button type="button" id="qrTabAudience" class="btn" style="flex: 1; padding: 6px; font-size: 0.8rem; font-weight: 800; background: #fbb212; color: #000000;" onclick="switchQrTab('audience')">📱 Audiencia</button>
+      <button type="button" id="qrTabSpeaker" class="btn" style="flex: 1; padding: 6px; font-size: 0.8rem; font-weight: 700; background: transparent; color: var(--muted);" onclick="switchQrTab('speaker')">🎤 Orador / Micrófono</button>
+    </div>
+    <h3 style="margin: 0 0 6px;" id="stageQrTitle">📱 QR Acceso Audiencia</h3>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 14px;" id="stageQrSubtitle">
+      Proyecta o comparte este código QR para que el público acceda a los subtítulos en su móvil:
+    </p>
+    <div style="background: white; padding: 14px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 16px rgba(0,0,0,0.15); margin-bottom: 12px;">
+      <img id="stageQrImage" src="" alt="Stage QR Code" style="width: 220px; height: 220px; display: block;" />
+    </div>
+    <div style="font-size: 0.78rem; word-break: break-all; color: #219f9d; font-family: monospace; background: var(--panel-2); padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 16px;" id="stageQrUrlText"></div>
+    <div style="display: flex; gap: 8px; justify-content: center;">
+      <button class="btn" style="background: #fbb212; color: #000000; font-weight: 800; padding: 6px 16px;" onclick="copyStageQrUrl()">📋 Copiar Enlace</button>
+      <button class="btn" style="background: var(--panel-2); border: 1px solid var(--border);" onclick="closeStageQr()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create New Stage -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal-content">
+    <h3 style="margin: 0 0 1rem;" data-i18n="producer.modal_create_title">Crear Nueva Sala / Escenario</h3>
+    <form id="createStageForm" onsubmit="handleCreateStage(event)">
+      <div class="form-group">
+        <label for="newStageId" data-i18n="producer.field_stage_id">ID de Sala (ej. stage-e)</label>
+        <input type="text" id="newStageId" class="form-control" required placeholder="stage-e" />
+      </div>
+      <div class="form-group">
+        <label for="newStageName" data-i18n="producer.field_stage_name">Título de la Sala / Charla</label>
+        <input type="text" id="newStageName" class="form-control" required placeholder="Keynote Hall — AI Track" />
+      </div>
+      <div class="form-group">
+        <label for="newStageSpeaker" data-i18n="producer.field_speaker">Orador / Speaker</label>
+        <input type="text" id="newStageSpeaker" class="form-control" placeholder="Nombre del Orador" />
+      </div>
+      
+      <!-- Source Language Selector -->
+      <div class="form-group">
+        <label for="newSourceLang" data-i18n="producer.field_source_lang">🗣️ Idioma en que se presentará (Audio Orador):</label>
+        <select id="newSourceLang" class="form-control">
+          <option value="en" selected>English (Inglés)</option>
+          <option value="es">Español (Spanish)</option>
+          <option value="pt">Português (Portuguese)</option>
+          <option value="fr">Français (French)</option>
+          <option value="de">Deutsch (German)</option>
+          <option value="it">Italiano (Italian)</option>
+          <option value="ru">Русский (Russian)</option>
+          <option value="zh-CN">中文 (Chinese)</option>
+          <option value="ja">日本語 (Japanese)</option>
+        </select>
+      </div>
+
+      <!-- Target Languages Selector -->
+      <div class="form-group">
+        <label data-i18n="producer.field_target_langs">🎧 Idiomas en que se traducirá para la audiencia (Subtítulos):</label>
+        <div class="checkbox-grid" id="createTargetLangs">
+          <label class="checkbox-label"><input type="checkbox" value="es" checked /> Español (es)</label>
+          <label class="checkbox-label"><input type="checkbox" value="en" /> English (en)</label>
+          <label class="checkbox-label"><input type="checkbox" value="pt" checked /> Português (pt)</label>
+          <label class="checkbox-label"><input type="checkbox" value="fr" /> Français (fr)</label>
+          <label class="checkbox-label"><input type="checkbox" value="de" /> Deutsch (de)</label>
+          <label class="checkbox-label"><input type="checkbox" value="it" /> Italiano (it)</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="newStageDesc" data-i18n="producer.field_desc">Descripción</label>
+        <input type="text" id="newStageDesc" class="form-control" placeholder="Detalles de la sesión..." />
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.5rem;">
+        <button type="button" class="btn" style="background: var(--panel-2); border: 1px solid var(--border);" onclick="closeCreateModal()" data-i18n="producer.btn_cancel">Cancelar</button>
+        <button type="submit" class="btn" style="background: var(--primary); color: white;" data-i18n="producer.btn_create">Crear Sala</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Edit Stage & Languages -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-content">
+    <h3 style="margin: 0 0 1rem;" id="editModalTitle" data-i18n="producer.modal_edit_title">Editar Sala e Idiomas</h3>
+    <form id="editStageForm" onsubmit="handleSaveEditStage(event)">
+      <input type="hidden" id="editStageId" />
+      
+      <div class="form-group">
+        <label for="editStageName" data-i18n="producer.field_stage_name">Título de la Sala</label>
+        <input type="text" id="editStageName" class="form-control" required />
+      </div>
+      <div class="form-group">
+        <label for="editStageSpeaker" data-i18n="producer.field_speaker">Orador / Speaker</label>
+        <input type="text" id="editStageSpeaker" class="form-control" />
+      </div>
+
+      <!-- Edit Source Language -->
+      <div class="form-group">
+        <label for="editSourceLang" data-i18n="producer.field_source_lang">🗣️ Idioma en que se presentará (Audio Orador):</label>
+        <select id="editSourceLang" class="form-control">
+          <option value="en">English (Inglés)</option>
+          <option value="es">Español (Spanish)</option>
+          <option value="pt">Português (Portuguese)</option>
+          <option value="fr">Français (French)</option>
+          <option value="de">Deutsch (German)</option>
+          <option value="it">Italiano (Italian)</option>
+          <option value="ru">Русский (Russian)</option>
+          <option value="zh-CN">中文 (Chinese)</option>
+          <option value="ja">日本語 (Japanese)</option>
+        </select>
+      </div>
+
+      <!-- Edit Target Languages -->
+      <div class="form-group">
+        <label data-i18n="producer.field_target_langs">🎧 Idiomas de subtítulos para la audiencia:</label>
+        <div class="checkbox-grid" id="editTargetLangs">
+          <label class="checkbox-label"><input type="checkbox" value="es" /> Español (es)</label>
+          <label class="checkbox-label"><input type="checkbox" value="en" /> English (en)</label>
+          <label class="checkbox-label"><input type="checkbox" value="pt" /> Português (pt)</label>
+          <label class="checkbox-label"><input type="checkbox" value="fr" /> Français (fr)</label>
+          <label class="checkbox-label"><input type="checkbox" value="de" /> Deutsch (de)</label>
+          <label class="checkbox-label"><input type="checkbox" value="it" /> Italiano (it)</label>
+          <label class="checkbox-label"><input type="checkbox" value="ru" /> Русский (ru)</label>
+          <label class="checkbox-label"><input type="checkbox" value="zh-CN" /> 中文 (zh)</label>
+        </div>
+      </div>
+
+      <!-- Edit STT Engine & Translation Model -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label for="editEngine" data-i18n="producer.stt_engine">🎙️ Motor de Voz (STT):</label>
+          <select id="editEngine" class="form-control" onchange="syncEditEngineHelper()">
+            <option value="webspeech">Web Speech</option>
+            <option value="whisper">Whisper (Local)</option>
+            <option value="gemini_live">✨ Gemini Live (Experimental)</option>
+            <option value="nemotron">Nemotron (Local)</option>
+            <option value="deepgram">Deepgram (Nova-3)</option>
+            <option value="elevenlabs">ElevenLabs (Scribe)</option>
+          </select>
+        </div>
+        <div class="form-group" id="editTransGroup">
+          <label for="editTransProvider" data-i18n="producer.ai_trans">✨ Motor de Traducción (IA):</label>
+          <select id="editTransProvider" class="form-control">
+            <option value="gemini">Google Gemini 3.6 Flash (IA)</option>
+            <option value="googletrans">Google Translate (Estándar)</option>
+            <option value="none">Desactivada (Solo Original)</option>
+          </select>
+          <small id="editTransHint" style="display: none; font-size: 0.75rem; color: #6366f1; margin-top: 4px;">⚡ Gemini Live traduce el audio de voz directamente sin requerir IA secundaria.</small>
+        </div>
+      </div>
+
+      <!-- Edit Technical Glossary -->
+      <div class="form-group">
+        <label for="editGlossary">📖 Glosario Técnico (JSON):</label>
+        <textarea id="editGlossary" class="form-control" style="font-family: monospace; font-size: 0.8rem; height: 90px;"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.5rem;">
+        <button type="button" class="btn" style="background: var(--panel-2); border: 1px solid var(--border);" onclick="closeEditModal()" data-i18n="producer.btn_cancel">Cancelar</button>
+        <button type="submit" class="btn" style="background: var(--primary); color: white;" data-i18n="producer.btn_save">Guardar Cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openCreateModal() {
+    const uiLang = (typeof getUiLanguage === 'function' ? getUiLanguage() : localStorage.getItem('srlt_ui_lang')) || 'es';
+    const sourceSelect = document.getElementById('newSourceLang');
+    if (sourceSelect) {
+      sourceSelect.value = (uiLang === 'es') ? 'es' : 'en';
+    }
+    
+    // Default target languages based on app language
+    document.querySelectorAll('#createTargetLangs input[type="checkbox"]').forEach(cb => {
+      if (uiLang === 'es') {
+        cb.checked = (cb.value === 'en' || cb.value === 'pt');
+      } else {
+        cb.checked = (cb.value === 'es' || cb.value === 'pt');
+      }
+    });
+
+    document.getElementById('createModal').classList.add('active');
+  }
+  function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('active');
+  }
+
+  function syncEditEngineHelper() {
+    const engine = document.getElementById('editEngine').value;
+    const transSelect = document.getElementById('editTransProvider');
+    const hint = document.getElementById('editTransHint');
+    const isLive = (engine === 'gemini_live' || engine === 'gemini-live');
+    if (isLive) {
+      if (transSelect) transSelect.disabled = true;
+      if (hint) hint.style.display = 'block';
+    } else {
+      if (transSelect) transSelect.disabled = false;
+      if (hint) hint.style.display = 'none';
+    }
+  }
+
+  function openEditModal(sessionId) {
+    const card = document.getElementById(`producer-card-${sessionId}`);
+    if (!card) return;
+    const session = JSON.parse(card.getAttribute('data-session'));
+    
+    document.getElementById('editStageId').value = session.id;
+    document.getElementById('editModalTitle').textContent = `Editar Sala: ${session.id.toUpperCase()}`;
+    document.getElementById('editStageName').value = session.name;
+    document.getElementById('editStageSpeaker').value = session.speaker || '';
+    document.getElementById('editSourceLang').value = session.source_language || 'en';
+    document.getElementById('editEngine').value = session.engine || 'webspeech';
+    document.getElementById('editTransProvider').value = session.translation_provider || 'gemini';
+
+    // Set checkboxes for target languages
+    const currentTargets = new Set(session.target_languages || ['es']);
+    document.querySelectorAll('#editTargetLangs input[type="checkbox"]').forEach(cb => {
+      cb.checked = currentTargets.has(cb.value);
+    });
+
+    // Glossary
+    document.getElementById('editGlossary').value = JSON.stringify(session.glossary || {}, null, 2);
+
+    syncEditEngineHelper();
+    document.getElementById('editModal').classList.add('active');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('active');
+  }
+
+  async function handleSaveEditStage(e) {
+    e.preventDefault();
+    const id = document.getElementById('editStageId').value;
+    const name = document.getElementById('editStageName').value;
+    const speaker = document.getElementById('editStageSpeaker').value;
+    const source_language = document.getElementById('editSourceLang').value;
+    const engine = document.getElementById('editEngine').value;
+    const translation_provider = document.getElementById('editTransProvider').value;
+
+    const target_languages = [];
+    document.querySelectorAll('#editTargetLangs input[type="checkbox"]:checked').forEach(cb => {
+      target_languages.push(cb.value);
+    });
+    if (target_languages.length === 0) target_languages.push('es');
+
+    let glossary = {};
+    try {
+      glossary = JSON.parse(document.getElementById('editGlossary').value || '{}');
+    } catch(err) {
+      alert('Error en formato JSON del glosario: ' + err);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, speaker, source_language, target_languages, engine, translation_provider, glossary })
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch(err) {
+      alert('Error guardando cambios: ' + err);
+    }
+  }
+
+  async function updateStageEngine(sessionId, engine) {
+    const transCtrl = document.getElementById(`trans-control-${sessionId}`);
+    const transSelect = document.getElementById(`trans-select-${sessionId}`);
+    const isLive = (engine === 'gemini_live' || engine === 'gemini-live');
+    if (transCtrl) {
+      transCtrl.style.opacity = isLive ? '0.4' : '1';
+      transCtrl.style.pointerEvents = isLive ? 'none' : 'auto';
+    }
+    if (transSelect) {
+      transSelect.disabled = isLive;
+      if (isLive) {
+        transSelect.title = "Gemini Live traduce audio directamente";
+      } else {
+        transSelect.removeAttribute('title');
+      }
+    }
+    try {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engine })
+      });
+    } catch(e) {
+      console.error('Failed to update engine:', e);
+    }
+  }
+
+  async function updateStageTranslationProvider(sessionId, translation_provider) {
+    try {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ translation_provider })
+      });
+    } catch(e) {
+      console.error('Failed to update translation provider:', e);
+    }
+  }
+
+  let currentQrSessionId = '';
+  let currentQrTab = 'audience';
+  let currentQrStageUrl = '';
+
+  function updateQrDisplay() {
+    if (!currentQrSessionId) return;
+    const tabAudienceBtn = document.getElementById('qrTabAudience');
+    const tabSpeakerBtn = document.getElementById('qrTabSpeaker');
+    const title = document.getElementById('stageQrTitle');
+    const subtitle = document.getElementById('stageQrSubtitle');
+
+    if (currentQrTab === 'audience') {
+      currentQrStageUrl = `${window.location.origin}/session/${currentQrSessionId}`;
+      title.textContent = `📱 QR Acceso Audiencia: ${currentQrSessionId.toUpperCase()}`;
+      subtitle.textContent = 'Proyecta o comparte este código QR para que el público acceda a los subtítulos en su móvil:';
+      tabAudienceBtn.style.background = 'var(--primary)';
+      tabAudienceBtn.style.color = 'white';
+      tabSpeakerBtn.style.background = 'transparent';
+      tabSpeakerBtn.style.color = 'var(--muted)';
+    } else {
+      currentQrStageUrl = `${window.location.origin}/speaker/${currentQrSessionId}`;
+      title.textContent = `🎤 QR Micrófono Orador: ${currentQrSessionId.toUpperCase()}`;
+      subtitle.textContent = 'Entrega este código QR al orador/speaker para que use su propio micrófono desde su móvil o laptop:';
+      tabSpeakerBtn.style.background = '#10b981';
+      tabSpeakerBtn.style.color = 'white';
+      tabAudienceBtn.style.background = 'transparent';
+      tabAudienceBtn.style.color = 'var(--muted)';
+    }
+
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentQrStageUrl)}`;
+    document.getElementById('stageQrImage').src = qrUrl;
+    document.getElementById('stageQrUrlText').textContent = currentQrStageUrl;
+  }
+
+  function openStageQr(sessionId) {
+    currentQrSessionId = sessionId;
+    currentQrTab = 'audience';
+    updateQrDisplay();
+    document.getElementById('stageQrModal').classList.add('active');
+  }
+
+  function switchQrTab(tab) {
+    currentQrTab = tab;
+    updateQrDisplay();
+  }
+
+  function closeStageQr(e) {
+    document.getElementById('stageQrModal').classList.remove('active');
+  }
+
+  async function copyStageQrUrl() {
+    if (!currentQrStageUrl) return;
+    try {
+      await navigator.clipboard.writeText(currentQrStageUrl);
+      alert('¡Enlace copiado al portapapeles!');
+    } catch(err) {
+      prompt('Copia este enlace:', currentQrStageUrl);
+    }
+  }
+
+  async function updateStageStatus(sessionId, status) {
+    try {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function deleteStage(sessionId) {
+    if (!confirm(`¿Estás seguro de eliminar la sala ${sessionId.toUpperCase()}?`)) return;
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+      if (res.ok) window.location.reload();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function clearStageHistory(sessionId) {
+    if (!confirm(`¿Estás seguro de que deseas borrar todo el registro de subtítulos de la sala "${sessionId.toUpperCase()}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/session/${sessionId}/clear`, { method: 'POST' });
+      if (res.ok) {
+        const prev = document.getElementById(`preview-${sessionId}`);
+        if (prev) prev.textContent = 'Registro borrado. Listo para emitir...';
+        alert(`¡Registro de la sala ${sessionId.toUpperCase()} borrado con éxito!`);
+      } else {
+        alert('Error al borrar el registro de la sala');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión al borrar el registro');
+    }
+  }
+
+  async function clearAllStagesHistory() {
+    if (!confirm('¿Estás seguro de que deseas borrar el registro de subtítulos de TODAS las salas?')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/sessions/clear-history', { method: 'POST' });
+      if (res.ok) {
+        document.querySelectorAll('.preview-log').forEach(el => {
+          el.textContent = 'Registro borrado. Listo para emitir...';
+        });
+        alert('¡Registros de todas las salas borrados con éxito!');
+      } else {
+        alert('Error al borrar los registros');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión al borrar los registros');
+    }
+  }
+
+  async function handleCreateStage(e) {
+    e.preventDefault();
+    const id = document.getElementById('newStageId').value;
+    const name = document.getElementById('newStageName').value;
+    const speaker = document.getElementById('newStageSpeaker').value;
+    const description = document.getElementById('newStageDesc').value;
+    const source_language = document.getElementById('newSourceLang').value;
+
+    const target_languages = [];
+    document.querySelectorAll('#createTargetLangs input[type="checkbox"]:checked').forEach(cb => {
+      target_languages.push(cb.value);
+    });
+    if (target_languages.length === 0) target_languages.push('es');
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, speaker, description, source_language, target_languages })
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (err) {
+      alert('Failed to create stage: ' + err);
+    }
+  }
+
+  // Periodic metrics refresh
+  async function refreshProducerMetrics() {
+    try {
+      const res = await fetch('/api/sessions');
+      if (res.ok) {
+        const data = await res.json();
+        data.sessions.forEach(s => {
+          const vEl = document.getElementById(`viewers-count-${s.id}`);
+          if (vEl) vEl.textContent = s.viewers_count;
+          if (s.last_metrics) {
+            const sttEl = document.getElementById(`stt-lat-${s.id}`);
+            const trEl = document.getElementById(`tr-lat-${s.id}`);
+            const totEl = document.getElementById(`total-lat-${s.id}`);
+            if (sttEl && s.last_metrics.stt_ms != null) sttEl.textContent = s.last_metrics.stt_ms;
+            if (trEl && s.last_metrics.translation_ms != null) trEl.textContent = s.last_metrics.translation_ms;
+            if (totEl && s.last_metrics.total_ms != null) totEl.textContent = s.last_metrics.total_ms;
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  setInterval(refreshProducerMetrics, 3000);
+
+  // In-browser speech recognition integration for live producer
+  const activeProducers = {};
+
+  const SPEECH_LANG_MAP = {
+    'en': 'en-US',
+    'es': 'es-ES',
+    'pt': 'pt-BR',
+    'fr': 'fr-FR',
+    'de': 'de-DE',
+    'it': 'it-IT',
+    'ru': 'ru-RU',
+    'zh-CN': 'zh-CN',
+    'ja': 'ja-JP'
+  };
+
+  async function toggleStageProducerMic(sessionId, fallbackLang) {
+    const card = document.getElementById(`producer-card-${sessionId}`);
+    let sourceLang = fallbackLang || 'en';
+    if (card) {
+      try {
+        const sData = JSON.parse(card.getAttribute('data-session'));
+        if (sData && sData.source_language) sourceLang = sData.source_language;
+      } catch(e) {}
+    }
+
+    if (activeProducers[sessionId]) {
+      // Stop
+      activeProducers[sessionId].shouldRun = false;
+      activeProducers[sessionId].stop();
+      delete activeProducers[sessionId];
+      const btn = document.getElementById(`mic-btn-${sessionId}`);
+      if (btn) btn.className = 'btn-mic-live idle';
+      const lbl = document.getElementById(`mic-label-${sessionId}`);
+      if (lbl) lbl.textContent = `Start Live Producer Speech (${sourceLang.toUpperCase()})`;
+      const prev = document.getElementById(`preview-${sessionId}`);
+      if (prev) prev.textContent = 'Broadcast stopped.';
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Web Speech API no está soportada en este navegador. Utiliza Chrome, Edge o Safari.');
+      return;
+    }
+
+    const btn = document.getElementById(`mic-btn-${sessionId}`);
+    if (btn) btn.className = 'btn-mic-live';
+    const lbl = document.getElementById(`mic-label-${sessionId}`);
+    if (lbl) lbl.textContent = `🔴 LIVE — Detener (${sourceLang.toUpperCase()})`;
+    const prev = document.getElementById(`preview-${sessionId}`);
+    if (prev) prev.textContent = '🎙️ Micrófono activado. Habla ahora para transmitir en vivo...';
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let ws = null;
+    let recognition = null;
+    let shouldRun = true;
+    let startTime = performance.now();
+
+    function connectWs() {
+      if (!shouldRun) return;
+      ws = new WebSocket(`${protocol}//${window.location.host}/ws/session/${sessionId}/producer`);
+      ws.onclose = () => {
+        if (shouldRun) {
+          setTimeout(connectWs, 2000);
+        }
+      };
+      ws.onerror = () => {
+        try { ws.close(); } catch(e) {}
+      };
+    }
+    connectWs();
+
+    let lastInterimSentTime = 0;
+
+    const NERDEARLA_REGEX = /\b(?:nerd(?:[-_.\s]*(?:e?ar\s*la|earl[ay]?|ear|er\s*la|eala|e\s*a\s*la|e\s*arla|a\s*la|dar\s*la|diar\s*la|dia\s*la|iar\s*la|ia\s*la|ierla|eada|eado|arlo|alas|alos|ela|ala|alla|alta|era|la)|[\.]la)|nerd\s+(?:de\s+)?(?:habla|aula|charla|arla|alma|armas)|nerd\s+y\s+(?:habla|arla)|nerdy\s*(?:arla|earla)|merd(?:[-_.\s]*(?:e?ar\s*la|er\s*la|eada|ear))|verd(?:[-_.\s]*(?:ear\s*la|e\s+habla)))\b/gi;
+
+    function normalizeNerdearla(text) {
+      if (!text) return text;
+      return text.replace(NERDEARLA_REGEX, 'Nerdearla');
+    }
+
+    function initRecognition() {
+      if (!shouldRun) return;
+      try {
+        recognition = new SpeechRecognition();
+        try {
+          const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+          if (SpeechGrammarList) {
+            const list = new SpeechGrammarList();
+            list.addFromString('#JSGF V1.0; grammar nerdearla; public <term> = Nerdearla | Vibeathon | Kubernetes | DevOps ;', 1);
+            recognition.grammars = list;
+          }
+        } catch (_) {}
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = SPEECH_LANG_MAP[sourceLang] || sourceLang;
+
+        recognition.onstart = () => {
+          if (!shouldRun) return;
+          if (btn) btn.className = 'btn-mic-live';
+          if (lbl) lbl.textContent = `🔴 Stop Broadcasting (LIVE - ${recognition.lang})`;
+          if (prev && prev.textContent.includes('Iniciando')) {
+            prev.textContent = '🎙️ Escuchando... Habla ahora.';
+          }
+        };
+
+        recognition.onresult = (event) => {
+          if (!shouldRun) return;
+          const finalParts = [];
+          const interimParts = [];
+          const now = performance.now();
+          const audioTs = startTime ? (now - startTime) : 0;
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const piece = (event.results[i][0].transcript || '').trim();
+            if (!piece) continue;
+            if (event.results[i].isFinal) {
+              finalParts.push(piece);
+            } else {
+              interimParts.push(piece);
+            }
+          }
+
+          let interim = normalizeNerdearla(interimParts.join(' '));
+          let final = normalizeNerdearla(finalParts.join(' '));
+
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            if (interim) {
+              if (now - lastInterimSentTime >= 90) {
+                lastInterimSentTime = now;
+                ws.send(JSON.stringify({
+                  type: 'interim',
+                  text: interim,
+                  source_language: sourceLang,
+                  audio_timestamp: audioTs,
+                  client_sent_ms: Date.now()
+                }));
+                if (prev) prev.textContent = `[Interim]: ${interim}`;
+              }
+            }
+            if (final) {
+              lastInterimSentTime = 0;
+              ws.send(JSON.stringify({
+                type: 'final',
+                text: final,
+                source_language: sourceLang,
+                audio_timestamp: audioTs,
+                client_sent_ms: Date.now()
+              }));
+              if (prev) prev.textContent = `[Final]: ${final}`;
+            }
+          }
+        };
+
+        recognition.onerror = (err) => {
+          if (err.error === 'not-allowed' || err.error === 'service-not-allowed') {
+            if (prev) prev.textContent = '⚠️ Acceso al micrófono bloqueado por el navegador.';
+            if (activeProducers[sessionId]) {
+              activeProducers[sessionId].stop();
+              delete activeProducers[sessionId];
+            }
+            if (btn) btn.className = 'btn-mic-live idle';
+            if (lbl) lbl.textContent = `Start Live Producer Speech (${sourceLang.toUpperCase()})`;
+          } else if (err.error === 'audio-capture') {
+            if (prev) prev.textContent = '⚠️ No se encontró micrófono activo.';
+          } else if (err.error !== 'no-speech' && err.error !== 'network' && err.error !== 'aborted') {
+            console.warn('Speech recognition warning:', err.error);
+          }
+        };
+
+        recognition.onend = () => {
+          if (!shouldRun) return;
+          try {
+            if (recognition) recognition.abort();
+          } catch(e) {}
+          recognition = null;
+          setTimeout(() => {
+            if (shouldRun) {
+              try {
+                initRecognition();
+              } catch(e) {
+                console.error('Error restarting recognition:', e);
+              }
+            }
+          }, 150);
+        };
+
+        recognition.start();
+      } catch(e) {
+        console.error('Failed to start recognition:', e);
+        if (prev) prev.textContent = `⚠️ Error al iniciar micrófono: ${e.message || e}`;
+      }
+    }
+
+    initRecognition();
+
+    activeProducers[sessionId] = {
+      shouldRun: true,
+      stop: () => {
+        shouldRun = false;
+        try { if (recognition) recognition.abort(); } catch(e) {}
+        recognition = null;
+        try { if (ws) ws.close(); } catch(e) {}
+      }
+    };
+  }
+
+  async function injectManualStageText(sessionId) {
+    const input = document.getElementById(`manual-inject-${sessionId}`);
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(`/api/session/${sessionId}/inject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, type: 'final' })
+      });
+      if (res.ok) {
+        input.value = '';
+        const prev = document.getElementById(`preview-${sessionId}`);
+        if (prev) prev.textContent = `[Manual]: ${text}`;
+      }
+    } catch(e) {
+      console.error('Error injecting manual text:', e);
+    }
+  }
+</script>
+{% endblock %}
