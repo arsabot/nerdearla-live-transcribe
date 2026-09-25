@@ -755,10 +755,10 @@ def test_pages_render_successfully(client):
     assert resp_producer.status_code == 200
     assert "Producer Control Room" in resp_producer.text
 
-    # 4. 2-Stage Demo
+    # 4. Multi-Stage Demo
     resp_demo = client.get("/demo")
     assert resp_demo.status_code == 200
-    assert "Simultaneous 2-Stage" in resp_demo.text
+    assert "Live Voice Demo" in resp_demo.text or "Simultaneous" in resp_demo.text
 
     # 5. Standalone Translator
     resp_standalone = client.get("/standalone")

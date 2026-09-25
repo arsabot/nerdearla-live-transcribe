@@ -261,14 +261,14 @@ class SessionManager:
             # Dedicated Isolated Sandbox Test Stages for live demos and synthetic injections
             Session(
                 id="demo-stage-a",
-                name="🧪 Demo Sandbox A — AI Lab (Prueba)",
-                speaker="Simulated Speaker (Linus & AI)",
+                name="🧪 Demo Stage A — Keynote EN (Inglés → ES / PT)",
+                speaker="Alex Rivera (AI Research)",
                 source_language="en",
                 target_languages=["es", "pt"],
                 status="live",
                 engine="webspeech",
                 translation_provider="gemini",
-                description="Sala aislada de prueba para testing y demostración en vivo sin afectar las salas reales de la conferencia.",
+                description="Sala demo con orador en inglés: traduce en simultáneo a español y portugués.",
                 glossary={
                     "Kubernetes": "Kubernetes",
                     "container": "contenedor",
@@ -282,20 +282,39 @@ class SessionManager:
             ),
             Session(
                 id="demo-stage-b",
-                name="🧪 Demo Sandbox B — Cloud Lab (Prueba)",
-                speaker="Simulated Speaker (Kelsey & Cloud)",
-                source_language="en",
-                target_languages=["es", "pt"],
+                name="🧪 Demo Stage B — DevOps PT (Português → EN / ES)",
+                speaker="Thiago Silva (Cloud Specialist)",
+                source_language="pt",
+                target_languages=["en", "es"],
                 status="live",
                 engine="webspeech",
                 translation_provider="gemini",
-                description="Sala aislada de prueba para testing y demostración de microservicios sin afectar las salas reales de la conferencia.",
+                description="Sala demo com orador em português: traduz em tempo real para inglês e espanhol.",
                 glossary={
                     "Kubernetes": "Kubernetes",
-                    "cluster": "clúster",
-                    "load balancer": "balanceador de carga",
-                    "pipeline": "pipeline",
-                    "observability": "observabilidad",
+                    "nuvem": "cloud",
+                    "balanceador de carga": "load balancer",
+                    "desenvolvedores": "developers",
+                    "observabilidade": "observability",
+                    "nerdearla": "Nerdearla",
+                },
+                is_demo=True,
+            ),
+            Session(
+                id="demo-stage-c",
+                name="🧪 Demo Stage C — Arquitectura ES (Español → EN / PT)",
+                speaker="Camila Gómez (Core Architect)",
+                source_language="es",
+                target_languages=["en", "pt"],
+                status="live",
+                engine="webspeech",
+                translation_provider="gemini",
+                description="Sala demo con oradora en español: traduce en simultáneo a inglés y portugués.",
+                glossary={
+                    "código abierto": "open source",
+                    "despliegue": "deployment",
+                    "rendimiento": "performance",
+                    "tiempo real": "real-time",
                     "nerdearla": "Nerdearla",
                 },
                 is_demo=True,
@@ -306,6 +325,13 @@ class SessionManager:
                 self._sessions[stage.id] = stage
             else:
                 self._sessions[stage.id].is_demo = stage.is_demo
+                if stage.is_demo:
+                    self._sessions[stage.id].source_language = stage.source_language
+                    self._sessions[stage.id].target_languages = stage.target_languages
+                    self._sessions[stage.id].name = stage.name
+                    self._sessions[stage.id].speaker = stage.speaker
+                    self._sessions[stage.id].description = stage.description
+                    self._sessions[stage.id].glossary = stage.glossary
 
     def _load_from_storage(self) -> None:
         """Load sessions and histories from JSON file on disk."""
