@@ -576,7 +576,7 @@
 
           if (interim) {
             interimPreview.textContent = `[${interim}]`;
-            if (ws && ws.readyState === WebSocket.OPEN && (now - lastInterimSent >= 90)) {
+            if (ws && ws.readyState === WebSocket.OPEN && (now - lastInterimSent >= 60)) {
               lastInterimSent = now;
               ws.send(JSON.stringify({
                 type: 'interim',
@@ -633,7 +633,7 @@
                 console.error('Error restarting speaker recognition:', e);
               }
             }
-          }, 150);
+          }, 50);
         };
 
         recognition.start();

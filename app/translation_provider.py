@@ -137,14 +137,14 @@ class GoogleTranslationProvider(TranslationProvider):
 
 class GeminiTranslationProvider(TranslationProvider):
     """
-    Google Gemini translation provider via REST API when GEMINI_API_KEY is configured.
+    Google Gemini translation provider via REST API when config.GEMINI_API_KEY is configured.
     Includes a fast circuit-breaker to instantly use GoogleTranslationProvider if Gemini
     encounters invalid keys (400), rate limits (429) or high latency.
     """
     _circuit_open_until: float = 0.0
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
+        self.api_key = api_key or os.getenv("config.GEMINI_API_KEY", "")
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self._fallback = GoogleTranslationProvider()
 

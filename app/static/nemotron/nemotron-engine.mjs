@@ -158,9 +158,9 @@ export class NemotronModel {
 const FRAME_SAMPLES = 512;          // matches /static/whisper/pcm-worklet.js
 const CHUNK_SAMPLES = CHUNK_FRAMES * HOP; // 8960 — one encoder step worth of audio
 const RMS_SPEECH = 0.012;           // normalised-RMS "loud" gate (same as Whisper's fallback)
-const SILENCE_FRAMES_END = 28;      // ~900 ms of silence ends an utterance
-const MIN_SPEECH_FRAMES = 8;        // ignore sub-256 ms blips
-const PRE_ROLL_FRAMES = 8;          // lead-in kept from just before speech onset
+const SILENCE_FRAMES_END = 8;      // ~256 ms of silence ends an utterance (tight for fast speakers)
+const MIN_SPEECH_FRAMES = 5;        // ~160 ms
+const PRE_ROLL_FRAMES = 6;          // lead-in kept from just before speech onset
 const MAX_UTT_SAMPLES = 20 * SR;    // hard cap (~20 s) -> force a final
 const EDGE_MARGIN_FRAMES = 2;       // hold back reflect-edge mel frames from interims
 

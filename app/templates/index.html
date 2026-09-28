@@ -888,7 +888,7 @@
     // Web Speech API does not expose a public endpointing/pause setting for final results.
     // To get faster updates we translate interim text with a client-side throttle.
     let translateInterimEnabled = true;
-    let interimSendIntervalMs = 5000;
+    let interimSendIntervalMs = 120;
     let lastInterimSentAtMs = 0;
     let lastInterimSentText = '';
 
@@ -1880,7 +1880,7 @@
           translateInterimEnabled = parsed.translateInterimEnabled;
         }
         if (Number.isFinite(parsed.interimSendIntervalMs)) {
-          interimSendIntervalMs = clampInt(parsed.interimSendIntervalMs, 500, 30000, 5000);
+          interimSendIntervalMs = clampInt(parsed.interimSendIntervalMs, 100, 30000, 250);
         }
 
         if (typeof parsed.engine === 'string') {
@@ -1994,7 +1994,7 @@
       recognitionPhrasesText = String(phrasesTextarea.value || '');
 
       translateInterimEnabled = Boolean(translateInterimCheckbox.checked);
-      interimSendIntervalMs = clampInt(interimIntervalInput.value, 500, 30000, 5000);
+      interimSendIntervalMs = clampInt(interimIntervalInput.value, 100, 30000, 250);
 
       // Model is fixed (nova-3)
       deepgramLanguage = deepgramLanguageInput.value || 'en';
@@ -2450,6 +2450,7 @@
       ruSegmentCount = 0;
       lastInterimSentText = '';
       lastInterimSentAtMs = 0;
+      lastRevisionId = -1;
       _resetStats();
     }
 
@@ -2470,7 +2471,94 @@
       };
     }
 
+    let lastRevisionId = -1;
+    let _trEventSeq = 0;
+
+    const __feLatencyStats = {
+      stt_to_ws: [],
+      ws_receive_delay: [],
+      ws_to_render: [],
+      stt_to_render: [],
+      messages_received: 0,
+      messages_rendered: 0,
+      messages_discarded: 0,
+      pending_updates: 0,
+      max_pending_updates: 0,
+      reset() {
+        this.stt_to_ws = [];
+        this.ws_receive_delay = [];
+        this.ws_to_render = [];
+        this.stt_to_render = [];
+        this.messages_received = 0;
+        this.messages_rendered = 0;
+        this.messages_discarded = 0;
+        this.pending_updates = 0;
+        this.max_pending_updates = 0;
+      },
+      printSummary() {
+        const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : "0.0";
+        const mx = (arr) => arr.length ? Math.max(...arr).toFixed(1) : "0.0";
+        const summary = `
+=== FRONTEND LATENCY ===
+stt_to_ws_avg:        ${avg(this.stt_to_ws)} ms
+stt_to_ws_max:        ${mx(this.stt_to_ws)} ms
+ws_receive_delay_avg: ${avg(this.ws_receive_delay)} ms
+ws_to_render_avg:     ${avg(this.ws_to_render)} ms
+stt_to_render_avg:    ${avg(this.stt_to_render)} ms
+messages_received:    ${this.messages_received}
+messages_rendered:    ${this.messages_rendered}
+messages_discarded:   ${this.messages_discarded}
+max_pending_updates:  ${this.max_pending_updates}
+========================`;
+        console.log(summary);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          try {
+            socket.send(JSON.stringify({
+              type: 'ui_summary',
+              messages_received: this.messages_received,
+              messages_rendered: this.messages_rendered,
+              messages_discarded: this.messages_discarded,
+              max_pending_updates: this.max_pending_updates,
+            }));
+          } catch(_) {}
+        }
+      }
+    };
+    window.__frontendLatencyStats = __feLatencyStats;
+
     function handleTranslationMessage(data) {
+      const ws_recv_ts = Date.now();
+      __feLatencyStats.messages_received++;
+      __feLatencyStats.pending_updates++;
+      if (__feLatencyStats.pending_updates > __feLatencyStats.max_pending_updates) {
+        __feLatencyStats.max_pending_updates = __feLatencyStats.pending_updates;
+      }
+
+      if (data && typeof data.revision_id === 'number') {
+        if (data.revision_id <= lastRevisionId) {
+          console.debug("Skipping outdated revision:", data.revision_id, "<=", lastRevisionId);
+          __feLatencyStats.messages_discarded++;
+          __feLatencyStats.pending_updates--;
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            try {
+              socket.send(JSON.stringify({
+                type: 'ui_discarded',
+                event_id: data.event_id || ('utt-' + data.revision_id),
+                revision_id: data.revision_id,
+                stt_ts: data.stt_ts,
+                ws_sent_ts: data.ws_sent_ts,
+                ws_recv_ts: ws_recv_ts,
+                reason: 'outdated_revision'
+              }));
+            } catch(_) {}
+          }
+          return;
+        }
+        lastRevisionId = data.revision_id;
+      }
+
+      const state_update_ts = Date.now();
+
       // Update translation stats (server time + optional /ws RTT correlation).
       const nowPerf = performance.now();
       if (data && typeof data.client_id === 'number' && _trPending.has(data.client_id)) {
@@ -2527,25 +2615,60 @@
           showInterim(translationRuContainer, bTrimmed);
         }
         updateStatsBar();
-        return;
+      } else {
+        const aTrimmed = String(aText || '').trim();
+        const bTrimmed = String(bText || '').trim();
+
+        // Don't drop the interim translation if the final translation is empty (e.g. translator failure).
+        if (aTrimmed) {
+          removeInterimElement(translationEnContainer);
+          enSegmentCount++;
+          addSegment(translationEnContainer, enSegmentCount, aTrimmed);
+        }
+        if (bCode && bTrimmed) {
+          removeInterimElement(translationRuContainer);
+          ruSegmentCount++;
+          addSegment(translationRuContainer, ruSegmentCount, bTrimmed);
+        }
+        updateStatsBar();
       }
 
-      const aTrimmed = String(aText || '').trim();
-      const bTrimmed = String(bText || '').trim();
+      const render_ts = Date.now();
+      __feLatencyStats.messages_rendered++;
+      __feLatencyStats.pending_updates--;
 
-      // Don't drop the interim translation if the final translation is empty (e.g. translator failure).
-      if (aTrimmed) {
-        removeInterimElement(translationEnContainer);
-        enSegmentCount++;
-        addSegment(translationEnContainer, enSegmentCount, aTrimmed);
-      }
-      if (bCode && bTrimmed) {
-        removeInterimElement(translationRuContainer);
-        ruSegmentCount++;
-        addSegment(translationRuContainer, ruSegmentCount, bTrimmed);
-      }
+      const stt_ts = (data && (data.stt_ts || data.client_sent_ms)) || ws_recv_ts;
+      const ws_sent_ts = (data && data.ws_sent_ts) || ws_recv_ts;
+      const stt_to_ws_ms = Math.max(0, ws_recv_ts - stt_ts);
+      const ws_receive_delay_ms = Math.max(0, ws_recv_ts - ws_sent_ts);
+      const ws_to_render_ms = Math.max(0, render_ts - ws_recv_ts);
+      const stt_to_render_ms = Math.max(0, render_ts - stt_ts);
 
-      updateStatsBar();
+      __feLatencyStats.stt_to_ws.push(stt_to_ws_ms);
+      __feLatencyStats.ws_receive_delay.push(ws_receive_delay_ms);
+      __feLatencyStats.ws_to_render.push(ws_to_render_ms);
+      __feLatencyStats.stt_to_render.push(stt_to_render_ms);
+
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(JSON.stringify({
+            type: 'ui_rendered',
+            event_id: data.event_id || (data.revision_id != null ? 'utt-' + data.revision_id : 'unknown'),
+            revision_id: data.revision_id,
+            text: String(aText || data.original || '').slice(0, 60),
+            text_len: String(aText || data.original || '').length,
+            stt_ts: stt_ts,
+            ws_sent_ts: ws_sent_ts,
+            ws_recv_ts: ws_recv_ts,
+            state_update_ts: state_update_ts,
+            render_ts: render_ts,
+            stt_to_ws_ms: stt_to_ws_ms,
+            ws_receive_delay_ms: ws_receive_delay_ms,
+            ws_to_render_ms: ws_to_render_ms,
+            latency_total_ms: stt_to_render_ms
+          }));
+        } catch(_) {}
+      }
     }
 
     function _prunePendingTranslate(nowPerf) {
@@ -2572,11 +2695,22 @@
         return;
       }
       const nowPerf = performance.now();
+      const stt_ts = Date.now();
       _prunePendingTranslate(nowPerf);
       const clientId = _trNextClientId++;
+      const eventSeq = ++_trEventSeq;
+      const eventId = `utt-${eventSeq}`;
       _trPending.set(clientId, nowPerf);
       try {
-        socket.send(JSON.stringify({ type: msgType, text: t, client_id: clientId, client_sent_ms: nowPerf }));
+        socket.send(JSON.stringify({
+          type: msgType,
+          text: t,
+          client_id: clientId,
+          client_sent_ms: stt_ts,
+          event_id: eventId,
+          revision_id: eventSeq,
+          stt_ts: stt_ts
+        }));
       } catch (_e) {
         _trPending.delete(clientId);
       }
@@ -3258,7 +3392,7 @@ registerProcessor('int16-pcm-processor', Int16PCMProcessor);
         elUrl += '&language_code=' + encodeURIComponent(elevenlabsLanguage);
       }
       if (elevenlabsCommitStrategy === 'vad') {
-        elUrl += '&vad_silence_threshold_secs=1.5';
+        elUrl += '&vad_silence_threshold_secs=0.4';
       }
 
       try {
@@ -3960,6 +4094,9 @@ registerProcessor('int16-pcm-processor', Int16PCMProcessor);
     }
 
     function startRecording() {
+      if (typeof __feLatencyStats !== 'undefined' && __feLatencyStats.reset) {
+        __feLatencyStats.reset();
+      }
       if (onboardingRequired) {
         openOnboarding();
         return;
@@ -3995,6 +4132,11 @@ registerProcessor('int16-pcm-processor', Int16PCMProcessor);
     }
 
     function stopRecording() {
+      // Print and send frontend latency summary
+      if (typeof __feLatencyStats !== 'undefined' && __feLatencyStats.printSummary) {
+        try { __feLatencyStats.printSummary(); } catch(_) {}
+      }
+
       // Invalidate the current recording session up front: any in-flight async
       // callback (Web Speech onresult/onend, remote socket.onopen, local transcript
       // handler) will then see a changed generation and drop its event instead of

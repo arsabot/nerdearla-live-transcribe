@@ -238,9 +238,9 @@ class GeminiLiveTranslator:
         ws_url: Optional[str] = None,
         circuit_breaker: Optional[GeminiLiveCircuitBreaker] = None,
     ) -> None:
-        self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+        self.api_key = (api_key or os.getenv("config.GEMINI_API_KEY", "")).strip()
         self.model = (model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.5-live-translate-preview")).strip()
-        self.ws_url = (ws_url or os.getenv("GEMINI_LIVE_WS_URL", self.DEFAULT_WS_URL)).strip()
+        self.ws_url = (ws_url or os.getenv("config.GEMINI_LIVE_WS_URL", self.DEFAULT_WS_URL)).strip()
         self.circuit_breaker = circuit_breaker or global_gemini_live_circuit
 
         self.state: ConnectionState = ConnectionState.DISCONNECTED
@@ -264,8 +264,8 @@ class GeminiLiveTranslator:
     ) -> bool:
         """Connects to Gemini Live BidiGenerateContent WebSocket and performs setup."""
         if not self.api_key:
-            logging.error("[GeminiLive] Authentication error: GEMINI_API_KEY is not configured")
-            self.circuit_breaker.trip(ErrorType.AUTH_ERROR, "GEMINI_API_KEY not configured")
+            logging.error("[GeminiLive] Authentication error: config.GEMINI_API_KEY is not configured")
+            self.circuit_breaker.trip(ErrorType.AUTH_ERROR, "config.GEMINI_API_KEY not configured")
             self.state = ConnectionState.ERROR
             return False
 
@@ -513,7 +513,7 @@ class GeminiLiveProvider(TranslationProvider):
         model: Optional[str] = None,
         fallback: Optional[TranslationProvider] = None,
     ) -> None:
-        self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+        self.api_key = (api_key or os.getenv("config.GEMINI_API_KEY", "")).strip()
         raw_model = (model or os.getenv("GEMINI_MODEL") or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.6-flash")).strip()
         if "live-translate" in raw_model.lower():
             raw_model = (os.getenv("GEMINI_MODEL") or "gemini-3.6-flash").strip()
@@ -535,7 +535,7 @@ class GeminiLiveProvider(TranslationProvider):
                 "available": False,
                 "provider": "google_translate",
                 "state": "FALLBACK",
-                "reason": "GEMINI_API_KEY not configured",
+                "reason": "config.GEMINI_API_KEY not configured",
             }
         if self.circuit_breaker.is_open:
             return {

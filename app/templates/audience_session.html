@@ -927,6 +927,12 @@
 
   function updateCaptionElement(el, eventData) {
     el.__eventData = eventData;
+    if (!el.__lastTranslations) el.__lastTranslations = {};
+    if (eventData.translations) {
+      for (const k in eventData.translations) {
+        if (eventData.translations[k]) el.__lastTranslations[k] = eventData.translations[k];
+      }
+    }
     const srcLang = eventData.source_language || sourceLanguage || 'en';
     const srcInfo = LANG_MAP[srcLang] || { name: srcLang.toUpperCase(), flag: '🎙️' };
 
@@ -940,10 +946,14 @@
     let linesHtml = '';
     activeLangs.forEach((langCode, index) => {
       const langInfo = LANG_MAP[langCode] || { name: langCode.toUpperCase(), flag: '🌐' };
-      const text = (eventData.translations && eventData.translations[langCode]) 
-                   || (langCode === srcLang ? eventData.original : null)
-                   || (eventData.translations && eventData.translations.es)
-                   || eventData.original || '';
+      let text = '';
+      if (eventData.translations && eventData.translations[langCode]) {
+        text = eventData.translations[langCode];
+      } else if (el.__lastTranslations && el.__lastTranslations[langCode]) {
+        text = el.__lastTranslations[langCode];
+      } else if (langCode === srcLang) {
+        text = eventData.original || '';
+      }
       
       const pillClass = index === 1 ? 'lang-pill lang-pill-2' : (index > 1 ? 'lang-pill lang-pill-3' : 'lang-pill');
       const textClass = index === 0 ? 'caption-text-main' : 'caption-text-sub';
@@ -951,7 +961,7 @@
       linesHtml += `
         <div class="caption-block">
           <span class="${pillClass}">${langInfo.flag} ${langCode.toUpperCase()}</span>
-          <span class="${textClass}">${escapeHtml(text)}</span>
+          <span class="${textClass}">${text ? escapeHtml(text) : '<span style="opacity: 0.35;">...</span>'}</span>
         </div>
       `;
     });

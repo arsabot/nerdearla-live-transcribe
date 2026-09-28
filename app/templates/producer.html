@@ -967,7 +967,7 @@
 
           if (ws && ws.readyState === WebSocket.OPEN) {
             if (interim) {
-              if (now - lastInterimSentTime >= 90) {
+              if (now - lastInterimSentTime >= 60) {
                 lastInterimSentTime = now;
                 ws.send(JSON.stringify({
                   type: 'interim',
@@ -1023,7 +1023,7 @@
                 console.error('Error restarting recognition:', e);
               }
             }
-          }, 150);
+          }, 50);
         };
 
         recognition.start();

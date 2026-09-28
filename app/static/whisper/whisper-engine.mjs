@@ -67,12 +67,12 @@ export const WHISPER_MODELS = {
 const SAMPLE_RATE = 16000;
 // pcm-worklet.js buffers each render quantum into FRAME_SAMPLES (512) before
 // posting, so each frame the engine sees is ~32 ms at 16 kHz.
-const SILENCE_FRAMES_END = 28; // ~900 ms @ 32 ms/frame
-const MIN_SPEECH_FRAMES = 13; // ~400 ms of actual speech (loud frames, not the silence tail)
+const SILENCE_FRAMES_END = 8; // ~256 ms @ 32 ms/frame (tight pause detection for fast speakers)
+const MIN_SPEECH_FRAMES = 6; // ~192 ms of actual speech (loud frames, not the silence tail)
 const MAX_SPEECH_FRAMES = 470; // ~15 s cap per utterance
 // Lead-in kept from just before VAD onset so the first syllable isn't clipped
 // (the VAD needs a frame or two to trigger).
-const PRE_ROLL_FRAMES = 8; // ~256 ms
+const PRE_ROLL_FRAMES = 6; // ~192 ms
 // Cap the transcription backlog. On slow CPUs (mobile WASM) inference can be
 // slower than real time; without a cap the queue — and thus latency — grows
 // without bound. We keep only the most recent utterances and drop the oldest.

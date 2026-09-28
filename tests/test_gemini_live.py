@@ -7,6 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.main as main
+import app.core.config as config
+import app.core.dependencies as deps
+import app.api.routes.websockets as websockets_route
+import app.gemini_live as gemini_live
+
 from app.gemini_live import (
     GeminiLiveTranslator,
     GeminiLiveProvider,
@@ -23,10 +28,12 @@ from app.translation_provider import GoogleTranslationProvider, apply_glossary
 
 @pytest.fixture()
 def client(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "AUTH_ENABLED", True)
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"webspeech", "whisper", "nemotron", "deepgram", "elevenlabs", "gemini_live"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "AUTH_ENABLED", True)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"webspeech", "whisper", "nemotron", "deepgram", "elevenlabs", "gemini_live"})
     return TestClient(main.app)
 
 
@@ -275,7 +282,7 @@ def test_failback_to_gemini_when_recovered(monkeypatch):
 
 
 def test_health_check_endpoint_reflects_gemini_live_availability(client, monkeypatch):
-    monkeypatch.setattr(main, "GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "test-gemini-key")
     global_gemini_live_circuit.record_success()
 
     resp = client.get("/health")
@@ -320,10 +327,12 @@ def test_multi_session_isolation():
 
 def test_ws_gemini_live_endpoint_with_google_fallback(client, monkeypatch):
     """Test /ws/gemini-live endpoint with Google Translate fallback when Gemini Live WS is unavailable."""
-    monkeypatch.setattr(main, "GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "AUTH_ENABLED", True)
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "AUTH_ENABLED", True)
 
     # Force circuit open so it uses fallback
     global_gemini_live_circuit.trip(ErrorType.WEBSOCKET_ERROR, "Simulated failure")
@@ -332,7 +341,8 @@ def test_ws_gemini_live_endpoint_with_google_fallback(client, monkeypatch):
         async def translate(self, text, source="auto", target="es", glossary=None):
             return f"FallbackTr: {text}"
 
-    monkeypatch.setattr(main, "GoogleTranslationProvider", lambda: MockFallback())
+    from app.api.routes import websockets as websockets_route
+    monkeypatch.setattr(websockets_route, "GoogleTranslationProvider", lambda: MockFallback())
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 

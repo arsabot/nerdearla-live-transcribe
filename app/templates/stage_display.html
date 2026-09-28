@@ -678,10 +678,13 @@
         activeLangs = [userLang, ...activeLangs.filter(l => l !== userLang)];
       }
       const primaryLang = activeLangs[0] || 'es';
-      const text = (eventData.translations && eventData.translations[primaryLang]) 
-             || (primaryLang === eventData.source_language ? eventData.original : null)
-             || (eventData.translations && eventData.translations.es)
-             || eventData.original || '';
+      const srcLang = eventData.source_language || sourceLanguage || 'es';
+      let text = '';
+      if (eventData.translations && eventData.translations[primaryLang]) {
+        text = eventData.translations[primaryLang];
+      } else if (primaryLang === srcLang) {
+        text = eventData.original || '';
+      }
       return normalizeNerdearla(text);
     }
 

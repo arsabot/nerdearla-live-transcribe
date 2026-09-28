@@ -4,15 +4,22 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.main as main
+import app.core.config as config
+import app.core.dependencies as deps
+import app.api.routes.websockets as websockets_route
+import app.gemini_live as gemini_live
+
 
 
 @pytest.fixture()
 def client(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "AUTH_ENABLED", True)
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"webspeech", "whisper", "nemotron", "deepgram", "elevenlabs", "gemini_live"})
-    return TestClient(main.app)
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "AUTH_ENABLED", True)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"webspeech", "whisper", "nemotron", "deepgram", "elevenlabs", "gemini_live"})
+    return TestClient(main.app, base_url="http://testserver.local")
 
 
 def _assert_login_h1(html: str) -> None:
@@ -64,7 +71,7 @@ def test_ws_translates_text(client, monkeypatch):
             return _FakeTranslation(f"{dest}:{text}")
 
     fake_translator = FakeAsyncTranslator()
-    monkeypatch.setattr(main, "Translator", lambda: fake_translator)
+    monkeypatch.setattr(websockets_route, "Translator", lambda: fake_translator)
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -86,7 +93,7 @@ def test_ws_typed_translates_single_dest(client, monkeypatch):
             return _FakeTranslation(f"{dest}:{text}")
 
     fake_translator = FakeAsyncTranslator()
-    monkeypatch.setattr(main, "Translator", lambda: fake_translator)
+    monkeypatch.setattr(websockets_route, "Translator", lambda: fake_translator)
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -108,7 +115,7 @@ def test_ws_empty_text_does_not_call_translator(client, monkeypatch):
         async def translate(self, *_args, **_kwargs):
             raise AssertionError("translate should not be called for empty input")
 
-    monkeypatch.setattr(main, "Translator", FakeAsyncTranslator)
+    monkeypatch.setattr(websockets_route, "Translator", FakeAsyncTranslator)
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -126,7 +133,7 @@ def test_ws_ping_pong(client, monkeypatch):
         async def translate(self, *_args, **_kwargs):
             raise AssertionError("translate should not be called for ping")
 
-    monkeypatch.setattr(main, "Translator", FakeAsyncTranslator)
+    monkeypatch.setattr(websockets_route, "Translator", FakeAsyncTranslator)
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -138,35 +145,35 @@ def test_ws_ping_pong(client, monkeypatch):
 
 
 def test_ws_elevenlabs_missing_api_key_returns_error(client, monkeypatch):
-    monkeypatch.setattr(main, "ELEVENLABS_API_KEY", "")
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "")
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
     with client.websocket_connect("/ws/elevenlabs", headers={"origin": "http://testserver"}) as ws:
         payload = ws.receive_json()
 
-    assert payload == {"error": "ELEVENLABS_API_KEY not configured"}
+    assert payload == {"error": "config.ELEVENLABS_API_KEY not configured"}
 
 
 def test_ws_deepgram_missing_api_key_returns_error(client, monkeypatch):
-    monkeypatch.setattr(main, "DEEPGRAM_API_KEY", "")
+    monkeypatch.setattr(config, "DEEPGRAM_API_KEY", "")
 
     client.post("/login", data={"password": "test-password", "next": "/deepgram"}, follow_redirects=False)
 
     with client.websocket_connect("/ws/deepgram", headers={"origin": "http://testserver"}) as ws:
         payload = ws.receive_json()
 
-    assert payload == {"error": "DEEPGRAM_API_KEY not configured"}
+    assert payload == {"error": "config.DEEPGRAM_API_KEY not configured"}
 
 
 def test_ws_deepgram_init_failure_sends_error(client, monkeypatch):
-    monkeypatch.setattr(main, "DEEPGRAM_API_KEY", "test-key")
+    monkeypatch.setattr(config, "DEEPGRAM_API_KEY", "test-key")
 
     class BoomDeepgramClient:
         def __init__(self, api_key):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(main, "DeepgramClient", BoomDeepgramClient)
+    monkeypatch.setattr(websockets_route, "DeepgramClient", BoomDeepgramClient)
 
     client.post("/login", data={"password": "test-password", "next": "/deepgram"}, follow_redirects=False)
 
@@ -181,8 +188,8 @@ def test_ws_deepgram_init_failure_sends_error(client, monkeypatch):
 
 
 def test_ws_deepgram_missing_sdk_returns_error(client, monkeypatch):
-    monkeypatch.setattr(main, "DEEPGRAM_API_KEY", "test-key")
-    monkeypatch.setattr(main, "DeepgramClient", None)
+    monkeypatch.setattr(config, "DEEPGRAM_API_KEY", "test-key")
+    monkeypatch.setattr(websockets_route, "DeepgramClient", None)
 
     client.post("/login", data={"password": "test-password", "next": "/deepgram"}, follow_redirects=False)
 
@@ -193,7 +200,7 @@ def test_ws_deepgram_missing_sdk_returns_error(client, monkeypatch):
 
 
 def test_ws_deepgram_happy_path_emits_interim_and_final(client, monkeypatch):
-    monkeypatch.setattr(main, "DEEPGRAM_API_KEY", "test-key")
+    monkeypatch.setattr(config, "DEEPGRAM_API_KEY", "test-key")
 
     class FakeAlt:
         def __init__(self, transcript: str):
@@ -217,7 +224,7 @@ def test_ws_deepgram_happy_path_emits_interim_and_final(client, monkeypatch):
             return _FakeTranslation(f"{dest}:{text}")
 
     translator = FakeAsyncTranslator()
-    monkeypatch.setattr(main, "Translator", lambda: translator)
+    monkeypatch.setattr(websockets_route, "Translator", lambda: translator)
 
     class FakeDgSocket:
         def __init__(self):
@@ -228,12 +235,17 @@ def test_ws_deepgram_happy_path_emits_interim_and_final(client, monkeypatch):
 
         def on(self, event_type, callback):
             self._handlers[event_type] = callback
+            print(f"FakeDgSocket.on called with {event_type} and {callback}")
 
         def start_listening(self):
-            msg_cb = self._handlers.get(main.EventType.MESSAGE)
+            msg_cb = self._handlers.get(websockets_route.EventType.MESSAGE)
             if msg_cb:
-                msg_cb(FakeListenV1Results("prubezne", False))
-                msg_cb(FakeListenV1Results("finalni", True))
+                try:
+                    msg_cb(self, FakeListenV1Results("prubezne", False))
+                    msg_cb(self, FakeListenV1Results("finalni", True))
+                except Exception as e:
+                    print(f"Exception in mock start_listening: {e}")
+            print("Looking for:", websockets_route.EventType.MESSAGE, "in", self._handlers)
 
         def send_media(self, data):
             self.sent_media.append(data)
@@ -278,7 +290,7 @@ def test_ws_deepgram_happy_path_emits_interim_and_final(client, monkeypatch):
 
             self.listen = _Listen()
 
-    monkeypatch.setattr(main, "DeepgramClient", FakeDeepgramClient)
+    monkeypatch.setattr(websockets_route, "DeepgramClient", FakeDeepgramClient)
 
     client.post("/login", data={"password": "test-password", "next": "/deepgram"}, follow_redirects=False)
 
@@ -315,7 +327,7 @@ def test_elevenlabs_token_requires_auth(client):
 
 
 def test_elevenlabs_token_missing_api_key(client, monkeypatch):
-    monkeypatch.setattr(main, "ELEVENLABS_API_KEY", "")
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "")
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -325,7 +337,7 @@ def test_elevenlabs_token_missing_api_key(client, monkeypatch):
 
 
 def test_elevenlabs_token_uses_env_key(client, monkeypatch):
-    monkeypatch.setattr(main, "ELEVENLABS_API_KEY", "xi-env-key")
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "xi-env-key")
 
     import httpx
 
@@ -359,7 +371,7 @@ def test_elevenlabs_token_uses_env_key(client, monkeypatch):
 
 
 def test_elevenlabs_token_uses_client_key(client, monkeypatch):
-    monkeypatch.setattr(main, "ELEVENLABS_API_KEY", "xi-env-key")
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "xi-env-key")
 
     import httpx
 
@@ -397,21 +409,21 @@ def test_elevenlabs_token_uses_client_key(client, monkeypatch):
 
 
 def test_auth_disabled_skips_login(monkeypatch):
-    monkeypatch.setattr(main, "AUTH_ENABLED", False)
-    monkeypatch.setattr(main, "APP_PASSWORD", "")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"webspeech"})
+    monkeypatch.setattr(config, "AUTH_ENABLED", False)
+    monkeypatch.setattr(config, "APP_PASSWORD", "")
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"webspeech"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     resp = c.get("/")
     assert resp.status_code == 200
     assert "<title>Live Translator</title>" in resp.text
 
 
 def test_auth_disabled_ws_no_cookie_needed(monkeypatch):
-    monkeypatch.setattr(main, "AUTH_ENABLED", False)
-    monkeypatch.setattr(main, "APP_PASSWORD", "")
+    monkeypatch.setattr(config, "AUTH_ENABLED", False)
+    monkeypatch.setattr(config, "APP_PASSWORD", "")
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     with c.websocket_connect("/ws") as ws:
         ws.send_json({"type": "ping"})
         data = ws.receive_json()
@@ -422,11 +434,13 @@ def test_auth_disabled_ws_no_cookie_needed(monkeypatch):
 
 
 def test_enabled_engines_passed_to_template(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"webspeech", "deepgram"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"webspeech", "deepgram"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     c.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
     resp = c.get("/")
@@ -439,11 +453,13 @@ def test_enabled_engines_passed_to_template(monkeypatch):
 
 
 def test_enabled_engines_includes_whisper_in_template(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"whisper"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"whisper"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     c.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
     resp = c.get("/")
@@ -489,11 +505,13 @@ def test_cross_origin_isolation_headers(client):
 
 
 def test_enabled_engines_includes_nemotron_in_template(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"nemotron"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"nemotron"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     c.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
     resp = c.get("/")
@@ -525,11 +543,13 @@ def test_csp_allows_nemotron_onnxruntime(client):
 
 
 def test_enabled_engines_default_webspeech_only(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"webspeech"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"webspeech"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     c.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
     resp = c.get("/")
@@ -555,8 +575,8 @@ def test_health_endpoint_no_auth_needed(client):
 
 def test_login_rate_limiting(client, monkeypatch):
     # Reset rate limiter state.
-    monkeypatch.setattr(main, "_LOGIN_ATTEMPTS", {})
-    monkeypatch.setattr(main, "_LOGIN_MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(deps, "_LOGIN_ATTEMPTS", {})
+    monkeypatch.setattr(deps, "_LOGIN_MAX_ATTEMPTS", 3)
 
     for _ in range(3):
         resp = client.post(
@@ -703,7 +723,7 @@ def test_export_vtt_and_srt_and_txt(client, monkeypatch):
             return _FakeTranslation(f"[{dest}] {text}")
 
     fake_translator = FakeAsyncTranslator()
-    monkeypatch.setattr(main, "Translator", lambda: fake_translator)
+    monkeypatch.setattr(websockets_route, "Translator", lambda: fake_translator)
     monkeypatch.setattr("app.translator.RobustTranslator", lambda *a, **k: fake_translator)
     monkeypatch.setattr("app.translation_provider.RobustTranslator", lambda *a, **k: fake_translator)
 
@@ -781,7 +801,7 @@ def test_session_history_persistence_and_handshake(client, monkeypatch):
             return _FakeTranslation(f"[{dest}] {text}")
 
     fake_translator = FakeAsyncTranslator()
-    monkeypatch.setattr(main, "Translator", lambda: fake_translator)
+    monkeypatch.setattr(websockets_route, "Translator", lambda: fake_translator)
     monkeypatch.setattr("app.translator.RobustTranslator", lambda *a, **k: fake_translator)
     monkeypatch.setattr("app.translation_provider.RobustTranslator", lambda *a, **k: fake_translator)
 
@@ -814,12 +834,13 @@ def test_staff_protection_blocks_unauthenticated_users(monkeypatch):
     Even when global audience auth is disabled (AUTH_ENABLED=False),
     Staff / Producer / Speaker routes and mutating APIs MUST still require authentication.
     """
-    monkeypatch.setattr(main, "AUTH_ENABLED", False)
-    monkeypatch.setattr(main, "APP_PASSWORD", "secret123")
-    monkeypatch.setattr(main, "STAFF_PASSWORD", "secret123")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
+    monkeypatch.setattr(config, "AUTH_ENABLED", False)
+    monkeypatch.setattr(config, "APP_PASSWORD", "secret123")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "secret123")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
 
-    unauthed_client = TestClient(main.app)
+    unauthed_client = TestClient(main.app, base_url="http://testserver.local")
 
     # 1. Audience views are open (Status 200 without password)
     assert unauthed_client.get("/").status_code == 200
@@ -870,13 +891,13 @@ def test_gemini_live_websocket_missing_api_key_fallback_to_google(client, monkey
     Test /ws/gemini-live websocket endpoint gracefully falls back to Google Translate
     when GEMINI_API_KEY is not configured without interrupting translation delivery.
     """
-    monkeypatch.setattr(main, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "")
 
-    class MockFallback(main.GoogleTranslationProvider):
+    class MockFallback(websockets_route.GoogleTranslationProvider):
         async def translate(self, text, source="auto", target="es", glossary=None):
             return f"FallbackGoogle: {text}"
 
-    monkeypatch.setattr(main, "GoogleTranslationProvider", lambda: MockFallback())
+    monkeypatch.setattr(websockets_route, "GoogleTranslationProvider", lambda: MockFallback())
 
     client.post("/login", data={"password": "test-password", "next": "/"}, follow_redirects=False)
 
@@ -890,11 +911,13 @@ def test_gemini_live_websocket_missing_api_key_fallback_to_google(client, monkey
 
 
 def test_enabled_engines_includes_gemini_live_in_template(monkeypatch):
-    monkeypatch.setattr(main, "APP_PASSWORD", "test-password")
-    monkeypatch.setattr(main, "AUTH_SECRET", "test-secret")
-    monkeypatch.setattr(main, "ENABLED_ENGINES", {"gemini_live"})
+    monkeypatch.setattr(config, "APP_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "STAFF_PASSWORD", "test-password")
+    monkeypatch.setattr(config, "AUTH_SECRET", "test-secret")
+    monkeypatch.delenv("AUTH_COOKIE_SECURE", raising=False)
+    monkeypatch.setattr(config, "ENABLED_ENGINES", {"gemini_live"})
 
-    c = TestClient(main.app)
+    c = TestClient(main.app, base_url="http://testserver.local")
     c.post("/login", data={"password": "test-password", "next": "/standalone"}, follow_redirects=False)
 
     resp = c.get("/standalone")

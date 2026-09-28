@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.core import config
 
 import logging
 import os
@@ -32,7 +33,7 @@ def _prepare_timeout_seconds() -> float | None:
 
 def _split_engines(enabled_engines: str | Iterable[str] | None) -> list[str]:
     if enabled_engines is None:
-        enabled_engines = os.getenv("ENABLED_ENGINES", "webspeech")
+        enabled_engines = os.getenv("config.ENABLED_ENGINES", "webspeech")
     if isinstance(enabled_engines, str):
         raw_values = enabled_engines.split(",")
     else:
