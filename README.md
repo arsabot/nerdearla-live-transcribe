@@ -13,6 +13,10 @@
 [![WebGPU](https://img.shields.io/badge/WebGPU-Whisper%20%26%20Nemotron-purple.svg)](app/static/)
 [![Gemini Live](https://img.shields.io/badge/Gemini%20Live-WebSocket%20Bidi-orange.svg)](app/gemini_live.py)
 
+<div align="center">
+  <img src="assets/preview.png" alt="Nerdearla Live Dashboard Preview" width="100%" style="border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.1);" />
+</div>
+
 ---
 
 ### 🌐 Idioma / Language

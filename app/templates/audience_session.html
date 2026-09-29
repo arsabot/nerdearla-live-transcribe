@@ -593,6 +593,12 @@
         Pantalla Completa
       </button>
 
+      <!-- AI Summary Button -->
+      <button id="summaryBtn" class="btn-icon" onclick="openSummaryModal()" title="Resumir con IA lo que te perdiste" style="font-weight: 800; background: #8b5cf6; color: #ffffff; border-color: rgba(139, 92, 246, 0.4);">
+        🤖 Resumen AI
+      </button>
+
+
       <!-- Export menu -->
       <div class="export-dropdown">
         <button id="exportToggleBtn" class="btn-icon" data-i18n="session.export">
@@ -625,6 +631,25 @@
       </div>
     </div>
   </div>
+
+  <!-- AI Summary Modal -->
+  <div class="modal-overlay" id="summaryModal" style="display: none;" onclick="closeSummaryModal(event)">
+    <div class="modal-card" style="max-width: 500px; text-align: left; padding: 24px; border-radius: var(--radius); margin: auto; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation()">
+      <h3 style="margin: 0 0 8px; font-size: 1.3rem; color: #8b5cf6;">🤖 Resumen AI</h3>
+      <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
+        Esto es un resumen automático de lo que se habló recientemente en esta sala, generado por Gemini AI.
+      </p>
+      
+      <div id="summaryContent" style="background: var(--panel-2); padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
+        Generando resumen... (puede tardar unos segundos)
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="btn" style="background: var(--panel-2); border: 1px solid var(--border);" onclick="closeSummaryModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 
   <div class="subtitles-layout">
     <div class="subtitles-box font-large" id="captionsBox">
@@ -704,6 +729,27 @@
     } catch(err) {
       prompt('Copia este enlace:', window.location.href);
     }
+  }
+
+  // AI Summary Logic
+  function openSummaryModal() {
+    const modal = document.getElementById('summaryModal');
+    const content = document.getElementById('summaryContent');
+    modal.style.display = 'flex';
+    content.innerHTML = '<span style="color: var(--muted);">Generando resumen... (puede tardar unos segundos)</span>';
+
+    fetch(`/api/session/${SESSION_ID}/summary`)
+      .then(res => res.json())
+      .then(data => {
+        content.textContent = data.summary || "No se pudo generar el resumen.";
+      })
+      .catch(err => {
+        content.textContent = "Hubo un error de conexión al generar el resumen.";
+      });
+  }
+
+  function closeSummaryModal(e) {
+    document.getElementById('summaryModal').style.display = 'none';
   }
 
   function escapeHtml(text) {

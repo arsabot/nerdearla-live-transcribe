@@ -4,7 +4,8 @@ from app.core.dependencies import _require_http_auth, _require_staff_http_auth
 from app.session_manager import SessionManager, TranscriptEvent, LatencyMetrics
 from app.translation_provider import get_translation_provider, normalize_brand_terms
 from app.exporter import export_vtt, export_srt, export_txt
-
+import httpx
+from app.core.config import GEMINI_API_KEY
 router = APIRouter()
 session_manager = SessionManager.get_instance()
 
@@ -211,5 +212,57 @@ async def api_export_txt(request: Request, session_id: str, lang: str = "es"):
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{session_id}.{lang}.txt"'},
     )
+
+
+@router.get("/api/session/{session_id}/summary")
+async def api_get_session_summary(request: Request, session_id: str, lang: str = "es"):
+    """Get an AI summary of the missed content."""
+    _require_http_auth(request)
+    session = await session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="session_not_found")
+    
+    if not session.history:
+        return {"summary": "No hay suficiente contenido en la sala para resumir."}
+
+    content = export_txt(session.history, lang=lang)
+    if len(content.split()) < 10:
+         return {"summary": "No hay suficiente contenido en la sala para resumir."}
+    
+    aws_url = os.getenv("AWS_SUMMARY_BOT_URL")
+    if aws_url:
+        payload = {"text": content, "language": lang}
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(aws_url, json=payload, timeout=20.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {"summary": data.get("summary", "No se recibió el resumen de AWS.")}
+                else:
+                    return {"summary": f"Error del bot de AWS (HTTP {resp.status_code})."}
+        except Exception as e:
+            return {"summary": "Hubo un error al conectar con el bot serverless de AWS."}
+            
+    if not GEMINI_API_KEY:
+        return {"summary": "Por favor configura AWS_SUMMARY_BOT_URL o GEMINI_API_KEY para habilitar los resúmenes."}
+        
+    prompt = f"Resume brevemente (en 2-3 oraciones) el siguiente contenido. Escribe el resumen en el idioma en que está el texto:\n\n{content}"
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=payload, timeout=15.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                summary_text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                return {"summary": summary_text.strip()}
+            else:
+                return {"summary": "No se pudo generar el resumen (Error en la API de IA)."}
+    except Exception as e:
+        return {"summary": "Hubo un error al conectar con el servicio de IA para el resumen."}
 
 

@@ -55,6 +55,22 @@ async def get_display_view(request: Request, session_id: str):
     )
 
 
+@router.get("/obs/{session_id}", response_class=HTMLResponse)
+async def get_obs_view(request: Request, session_id: str):
+    """Dedicated OBS Browser Source subtitle view."""
+    auth_resp = _check_html_auth(request)
+    if auth_resp:
+        return auth_resp
+    session = await session_manager.get_session(session_id)
+    if not session:
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "obs_display.html",
+        {"session": session.to_dict()},
+    )
+
+
 @router.get("/speaker/{session_id}", response_class=HTMLResponse)
 @router.get("/session/{session_id}/speaker", response_class=HTMLResponse)
 async def get_speaker_view(request: Request, session_id: str):
