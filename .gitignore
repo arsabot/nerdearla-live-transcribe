@@ -43,3 +43,10 @@ scratch/
 *.exe
 cloudflared.exe
 *.zip
+
+# Logs and scratch scripts
+logs/
+*.log
+pytest_out.txt
+test_out.txt
+patch_*.py
